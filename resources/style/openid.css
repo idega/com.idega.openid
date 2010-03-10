@@ -1,0 +1,19 @@
+form.openIDForm div.identifier label {
+	display: none;
+}
+
+form.openIDForm div.identifier input {
+	background: url('/idegaweb/bundles/com.idega.openid.bundle/resources/style/images/openid_small.gif') 1px center no-repeat;
+	border: 1px #a8a8a8 solid;
+	padding: 2px 8px 2px 20px;
+}
+
+form.openIDForm div.submit {
+	text-align: right;
+	margin-top: 8px;
+}
+
+form.openIDForm div.submit input {
+	border: 1px #a8a8a8 solid;
+	padding: 3px 6px;
+}

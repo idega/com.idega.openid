@@ -1,0 +1,21 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+>
+<ui:component>
+	<div class="#{openIDClientBean.styleClass} loginFailed">
+		<form class="openIDForm" action="#{openIDClientBean.action}" method="post">
+			<p class="errorMessage"><h:outputText value="#{openIDClientBean.output}"/></p>
+			<div class="submit #{openIDClientBean.localeStyle}">
+				<input type="submit" value="#{localizedStrings['com.idega.openid']['tryagain_text']}" />
+			</div>
+
+			<ui:repeat value="#{openIDClientBean.parameters}" var="parameter">
+				<input type="hidden" name="#{parameter.parameter}" value="#{parameter.value}" />
+			</ui:repeat>
+		</form>
+	</div>
+</ui:component>
+</html>

@@ -1,0 +1,23 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+>
+<ui:component>
+	<div class="#{openIDClientBean.styleClass} loggedOut">
+		<form class="openIDForm" action="#{loginBean.action}" method="post">
+			<div class="identifier">
+				<label for="openid_identifier">
+					<span><h:outputText value="#{localizedStrings['com.idega.openid']['openid_identifier']}" /></span>
+				</label>
+				<input type="text" id="openid_identifier" name="openid_identifier" />
+			</div>
+
+			<t:div styleClass="submit #{loginBean.localeStyle}">
+				<input type="submit" value="#{localizedStrings['com.idega.openid']['login_text']}" />
+			</t:div>
+		</form>
+	</div>
+</ui:component>
+</html>
