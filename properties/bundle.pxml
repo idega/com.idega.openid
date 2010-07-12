@@ -6,6 +6,26 @@
       <type>java.lang.String</type>
       <value>com.idega.openid</value>
     </key>
+    <key>
+      <name>iw_components</name>
+      <value>
+        <map>
+          <key>
+            <name>com.idega.openid.server.presentation.OpenIDLogin</name>
+            <value>
+              <map>
+                <key>
+                  <name>component_property_file</name>
+                  <type>java.lang.String</type>
+                  <value>com.idega.openid.server.presentation.OpenIDLogin.pxml</value>
+                </key>
+              </map>
+            </value>
+            <type>map</type>
+          </key>
+         </map>
+      </value>
+      <type>map</type>
+    </key>
   </map>
 </pxml>
-

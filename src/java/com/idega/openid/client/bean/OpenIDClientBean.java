@@ -18,11 +18,11 @@ public class OpenIDClientBean {
 	private String localeStyle;
 
 	public void addParameter(String parameter, String value) {
-		parameters.add(new Parameter(parameter, value));
+		this.parameters.add(new Parameter(parameter, value));
 	}
 
 	public Collection<Parameter> getParameters() {
-		return parameters;
+		return this.parameters;
 	}
 	
 	public class Parameter {
@@ -30,17 +30,17 @@ public class OpenIDClientBean {
 		String parameter;
 		String value;
 
-		public Parameter(String parameter, String value) {
-			this.parameter = parameter;
-			this.value = value;
+		public Parameter(String param, String val) {
+			this.parameter = param;
+			this.value = val;
 		}
 
 		public String getParameter() {
-			return parameter;
+			return this.parameter;
 		}
 
 		public String getValue() {
-			return value;
+			return this.value;
 		}
 	}
 	
@@ -55,8 +55,8 @@ public class OpenIDClientBean {
 	 * @param action
 	 *          the action to set
 	 */
-	public void setAction(String action) {
-		this.action = action;
+	public void setAction(String theAction) {
+		this.action = theAction;
 	}
 
 	/**
@@ -70,8 +70,8 @@ public class OpenIDClientBean {
 	 * @param output
 	 *          the output to set
 	 */
-	public void setOutput(String output) {
-		this.output = output;
+	public void setOutput(String textOutput) {
+		this.output = textOutput;
 	}
 
 	/**
@@ -85,8 +85,8 @@ public class OpenIDClientBean {
 	 * @param styleClass
 	 *          the styleClass to set
 	 */
-	public void setStyleClass(String styleClass) {
-		this.styleClass = styleClass;
+	public void setStyleClass(String theStyleClass) {
+		this.styleClass = theStyleClass;
 	}
 
 	/**
@@ -100,7 +100,7 @@ public class OpenIDClientBean {
 	 * @param localeStyle
 	 *          the localeStyle to set
 	 */
-	public void setLocaleStyle(String localeStyle) {
-		this.localeStyle = localeStyle;
+	public void setLocaleStyle(String localeStyleClass) {
+		this.localeStyle = localeStyleClass;
 	}
 }

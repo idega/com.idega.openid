@@ -1,6 +1,8 @@
 package com.idega.openid.server.servlet;
 
 import java.io.IOException;
+import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +31,17 @@ import org.openid4java.server.InMemoryServerAssociationStore;
 import org.openid4java.server.ServerException;
 import org.openid4java.server.ServerManager;
 
+import com.idega.business.IBOLookup;
+import com.idega.business.IBOLookupException;
+import com.idega.business.IBORuntimeException;
+import com.idega.core.contact.data.Email;
+import com.idega.idegaweb.IWApplicationContext;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
+import com.idega.presentation.IWContext;
+import com.idega.user.business.NoEmailFoundException;
+import com.idega.user.business.UserBusiness;
+import com.idega.user.data.User;
 
 public class OpenIDServerServlet extends HttpServlet {
 
@@ -44,112 +55,125 @@ public class OpenIDServerServlet extends HttpServlet {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		HttpServletRequest httpReq = (HttpServletRequest) req;
-		HttpServletResponse httpResp = (HttpServletResponse) resp;
-
 		ServerManager manager = getServerManager();
-		
-		// extract the parameters from the request
-        ParameterList request = new ParameterList(httpReq.getParameterMap());
 
-        String mode = request.hasParameter("openid.mode") ? request.getParameterValue("openid.mode") : null;
+		// extract the parameters from the request
+        ParameterList request = new ParameterList(req.getParameterMap());
+        if (request.getParameters().size() == 0) {
+        	request = new ParameterList((Map) req.getSession().getAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP));
+        }
+
+        String mode = request.hasParameter(OpenIDConstants.PARAMETER_OPENID_MODE) ? request.getParameterValue(OpenIDConstants.PARAMETER_OPENID_MODE) : null;
 
         Message response;
         String responseText = null;
 
         try {
-	        if ("associate".equals(mode)) {
+	        if (OpenIDConstants.PARAMETER_ASSOCIATE.equals(mode)) {
 	            // --- process an association request ---
 	            response = manager.associationResponse(request);
 	            responseText = response.keyValueFormEncoding();
 	        }
-	        else if ("checkid_setup".equals(mode) || "checkid_immediate".equals(mode)) {
-	            // interact with the user and obtain data needed to continue
-	            List userData = userInteraction(request);
-	
-	            String userSelectedClaimedId = (String) userData.get(0);
-	            Boolean authenticatedAndApproved = (Boolean) userData.get(1);
-	            String email = (String) userData.get(2);
-	
-	            // --- process an authentication request ---
-	            AuthRequest authReq = AuthRequest.createAuthRequest(request, manager.getRealmVerifier());
-	
-	            String opLocalId = null;
-	            // if the user chose a different claimed_id than the one in request
-	            if (userSelectedClaimedId != null && userSelectedClaimedId.equals(authReq.getClaimed())) {
-	                //opLocalId = lookupLocalId(userSelectedClaimedId);
-	            }
-	
-	            response = manager.authResponse(request,
-	                    opLocalId,
-	                    userSelectedClaimedId,
-	                    authenticatedAndApproved.booleanValue(),
-	                    false); // Sign after we added extensions.
-	
-	            if (response instanceof DirectError) {
-	            	directResponse(httpResp, response.keyValueFormEncoding());
-	            }
-	            else {
-	                if (authReq.hasExtension(AxMessage.OPENID_NS_AX)) {
-	                    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
-	                    if (ext instanceof FetchRequest) {
-	                        FetchRequest fetchReq = (FetchRequest) ext;
-	                        Map required = fetchReq.getAttributes(true);
-	                        //Map optional = fetchReq.getAttributes(false);
-	                        if (required.containsKey("email")) {
-	                            Map userDataExt = new HashMap();
-	                            //userDataExt.put("email", userData.get(3));
-	
-	                            FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
-	                            // (alternatively) manually add attribute values
-	                            fetchResp.addAttribute("email", "http://schema.openid.net/contact/email", email);
-	                            response.addExtension(fetchResp);
-	                        }
-	                    }
-	                    else /*if (ext instanceof StoreRequest)*/ {
-	                        throw new UnsupportedOperationException("TODO");
-	                    }
-	                }
-	                if (authReq.hasExtension(SRegMessage.OPENID_NS_SREG)) {
-	                    MessageExtension ext = authReq.getExtension(SRegMessage.OPENID_NS_SREG);
-	                    if (ext instanceof SRegRequest) {
-	                        SRegRequest sregReq = (SRegRequest) ext;
-	                        List required = sregReq.getAttributes(true);
-	                        //List optional = sregReq.getAttributes(false);
-	                        if (required.contains("email")) {
-	                            // data released by the user
-	                            Map userDataSReg = new HashMap();
-	                            //userData.put("email", "user@example.com");
-	
-	                            SRegResponse sregResp = SRegResponse.createSRegResponse(sregReq, userDataSReg);
-	                            // (alternatively) manually add attribute values
-	                            sregResp.addAttribute("email", email);
-	                            response.addExtension(sregResp);
-	                        }
-	                    }
-	                    else {
-	                        throw new UnsupportedOperationException("TODO");
-	                    }
-	                }
-	
-	                // Sign the auth success message.
-	                // This is required as AuthSuccess.buildSignedList has a `todo' tag now.
-	                manager.sign((AuthSuccess) response);
-	
-	                // caller will need to decide which of the following to use:
-	
-	                // option1: GET HTTP-redirect to the return_to URL
-	                httpResp.sendRedirect(response.getDestinationUrl(true));
-	
-	                // option2: HTML FORM Redirection
-	                //RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("formredirection.jsp");
-	                //httpReq.setAttribute("prameterMap", response.getParameterMap());
-	                //httpReq.setAttribute("destinationUrl", response.getDestinationUrl(false));
-	                //dispatcher.forward(request, response);
-	                //return null;
-	            }
+	        else if (OpenIDConstants.PARAMETER_CHECKID_SETUP.equals(mode) || OpenIDConstants.PARAMETER_CHECKID_IMMEDIATE.equals(mode)) {
+	        	IWContext iwc = new IWContext(req, resp, getServletContext());
+	        	if (iwc.isLoggedOn()) {
+	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP);
+	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_SERVER_URL);
+	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_DO_REDIRECT);
+	        		
+		            // interact with the user and obtain data needed to continue
+		            List userData = userInteraction(iwc, request);
+		
+		            String userSelectedClaimedId = (String) userData.get(0);
+		            Boolean authenticatedAndApproved = (Boolean) userData.get(1);
+		            String email = (String) userData.get(2);
+		            String personalID = (String) userData.get(3);
+		            
+		            // --- process an authentication request ---
+		            AuthRequest authReq = AuthRequest.createAuthRequest(request, manager.getRealmVerifier());
+		
+		            String opLocalId = null;
+		            // if the user chose a different claimed_id than the one in request
+		            if (userSelectedClaimedId != null && !userSelectedClaimedId.equals(authReq.getClaimed())) {
+		                opLocalId = userSelectedClaimedId;
+		            }
+		
+		            response = manager.authResponse(request,
+		                    opLocalId,
+		                    userSelectedClaimedId,
+		                    authenticatedAndApproved.booleanValue(),
+		                    false); // Sign after we added extensions.
+		
+		            if (response instanceof DirectError) {
+		            	directResponse(resp, response.keyValueFormEncoding());
+		            }
+		            else {
+		                if (authReq.hasExtension(AxMessage.OPENID_NS_AX)) {
+		                    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
+		                    if (ext instanceof FetchRequest) {
+		                        FetchRequest fetchReq = (FetchRequest) ext;
+		                        Map required = fetchReq.getAttributes(true);
+		                        if (required.containsKey("email")) {
+		                            Map userDataExt = new HashMap();
+		
+		                            FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
+		                            fetchResp.addAttribute("email", "http://schema.openid.net/contact/email", email);
+		                            fetchResp.addAttribute("personalID", "http://www.elykill.is/contact/personalID", personalID);
+		                            response.addExtension(fetchResp);
+		                        }
+		                    }
+		                    else /*if (ext instanceof StoreRequest)*/ {
+		                        throw new UnsupportedOperationException("TODO");
+		                    }
+		                }
+		                if (authReq.hasExtension(SRegMessage.OPENID_NS_SREG)) {
+		                    MessageExtension ext = authReq.getExtension(SRegMessage.OPENID_NS_SREG);
+		                    if (ext instanceof SRegRequest) {
+		                        SRegRequest sregReq = (SRegRequest) ext;
+		                        List required = sregReq.getAttributes(true);
+		                        if (required.contains("email")) {
+		                            Map userDataSReg = new HashMap();
+		
+		                            SRegResponse sregResp = SRegResponse.createSRegResponse(sregReq, userDataSReg);
+		                            sregResp.addAttribute("email", email);
+		                            response.addExtension(sregResp);
+		                        }
+		                    }
+		                    else {
+		                        throw new UnsupportedOperationException("TODO");
+		                    }
+		                }
+		
+		                // Sign the auth success message.
+		                // This is required as AuthSuccess.buildSignedList has a `todo' tag now.
+		                manager.sign((AuthSuccess) response);
+		
+		                // caller will need to decide which of the following to use:
+		
+		                // option1: GET HTTP-redirect to the return_to URL
+		                resp.sendRedirect(response.getDestinationUrl(true));
+		                return;
+		
+		                // option2: HTML FORM Redirection
+		                //RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("formredirection.jsp");
+		                //httpReq.setAttribute("prameterMap", response.getParameterMap());
+		                //httpReq.setAttribute("destinationUrl", response.getDestinationUrl(false));
+		                //dispatcher.forward(request, response);
+		                //return null;
+		            }
+	        	}
+	        	else {
+	        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP, req.getParameterMap());
+	        		
+	        		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI() + "?" + req.getQueryString();
+	        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_SERVER_URL, URL);
+	        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_DO_REDIRECT, Boolean.TRUE.toString());
+	        		
+	        		resp.sendRedirect(manager.getUserSetupUrl());
+	        		return;
+	        	}
 	        }
-	        else if ("check_authentication".equals(mode)) {
+	        else if (OpenIDConstants.PARAMETER_CHECK_AUTHENTICATION.equals(mode)) {
 	            // --- processing a verification request ---
 	            response = manager.verify(request);
 	            responseText = response.keyValueFormEncoding();
@@ -162,21 +186,51 @@ public class OpenIDServerServlet extends HttpServlet {
         }
         catch (MessageException me) {
         	me.printStackTrace();
+        	responseText = me.getMessage();
         }
         catch (AssociationException ae) {
         	ae.printStackTrace();
+        	responseText = ae.getMessage();
         }
         catch (ServerException se) {
 			se.printStackTrace();
+        	responseText = se.getMessage();
 		}
         
         // return the result to the user
-        directResponse(httpResp, responseText);
+        directResponse(resp, responseText);
     }
 
-    protected List<?> userInteraction(ParameterList request) throws ServerException {
-        throw new ServerException("User-interaction not implemented.");
+	protected List<?> userInteraction(IWContext iwc, ParameterList request) throws ServerException {
+		try {
+			User user = iwc.getCurrentUser();
+			Email email = null;
+			try {
+				email = getUserBusiness(iwc).getUsersMainEmail(user);
+			}
+			catch (NoEmailFoundException e) { /*No action...*/ }
+			
+			List<Object> list = new ArrayList<Object>();
+			list.add("http://" + getUserBusiness(iwc).getUserLogin(user) + ".elykill.is/pages/");
+			list.add(new Boolean(true));
+			list.add(email != null ? email.getEmailAddress() : "");
+			list.add(user.getPersonalID() != null ? user.getPersonalID() : "");
+			
+			return list;
+		}
+		catch (RemoteException re) {
+			throw new IBORuntimeException(re);
+		}
     }
+	
+	private UserBusiness getUserBusiness(IWApplicationContext iwac) {
+		try {
+			return (UserBusiness) IBOLookup.getServiceInstance(iwac, UserBusiness.class);
+		}
+		catch (IBOLookupException ile) {
+			throw new IBORuntimeException(ile);
+		}
+	}
 
     private void directResponse(HttpServletResponse httpResp, String response) throws IOException {
         ServletOutputStream os = httpResp.getOutputStream();
@@ -188,11 +242,13 @@ public class OpenIDServerServlet extends HttpServlet {
 		ServerManager manager = (ServerManager) IWMainApplication.getDefaultIWApplicationContext().getApplicationAttribute(OpenIDConstants.ATTRIBUTE_SERVER_MANAGER);
 		if (manager == null) {
 			String endPointUrl = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_END_POINT_URL, "http://localhost:8080/");
+			String userSetupUrl = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_USER_SETUP_URL, "http://localhost:8080/pages/profile/?doRedirect=true");
 
 			manager = new ServerManager();
 			manager.setSharedAssociations(new InMemoryServerAssociationStore());
 			manager.setPrivateAssociations(new InMemoryServerAssociationStore());
 			manager.setOPEndpointUrl(endPointUrl);
+			manager.setUserSetupUrl(userSetupUrl);
 			IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_SERVER_MANAGER, manager);
 		}
 		

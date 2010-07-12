@@ -28,6 +28,18 @@
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 
+	<filter>
+		<filter-name>OpenIDServerResponseFilter</filter-name>
+		<filter-class>
+			com.idega.openid.server.filter.OpenIDServerResponseFilter
+		</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>OpenIDServerResponseFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
 	<servlet>
 		<servlet-name>OpenIDServerServlet</servlet-name>
 		<servlet-class>
@@ -49,23 +61,15 @@
 	</servlet-mapping>
 
 	<servlet>
-		<servlet-name>OpenIDServerServlet2</servlet-name>
+		<servlet-name>OpenIDXRDSServlet</servlet-name>
 		<servlet-class>
-			com.idega.openid.server.servlet.OpenIDServerServlet2
+			com.idega.openid.server.servlet.OpenIDXRDSServlet
 		</servlet-class>
 	</servlet>
 
 	<servlet-mapping>
-		<servlet-name>OpenIDServerServlet2</servlet-name>
-		<url-pattern>/openid-server2/</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
-		<servlet-name>OpenIDServerServlet2</servlet-name>
-		<url-pattern>/openid-server2/*</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
-		<servlet-name>OpenIDServerServlet2</servlet-name>
-		<url-pattern>/openid-server2</url-pattern>
+		<servlet-name>OpenIDXRDSServlet</servlet-name>
+		<url-pattern>/xrds</url-pattern>
 	</servlet-mapping>
 
 </web-app>

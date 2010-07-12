@@ -57,7 +57,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 	private ConsumerManager manager;
 
 	public void destroy() {
-		manager = null;
+		//No action...
 	}
 
 	public void doFilter(ServletRequest srequest, ServletResponse sresponse, FilterChain chain) throws IOException, ServletException {
@@ -65,7 +65,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		HttpServletResponse response = (HttpServletResponse) sresponse;
 		HttpSession session = request.getSession();
 
-		boolean loginFailed = true;
+		boolean loginFailed = false;
 		
 		String isReturn = request.getParameter(OpenIDConstants.PARAMETER_RETURN);
 		if (isReturn != null) {
@@ -77,10 +77,10 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 					loginFailed = true;
 				}
 				else {
-					String id = identifier.getIdentifier();
+					String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_PERSONAL_ID_ALIAS);
 					
 					try {
-						loginFailed = !bean.logInUnVerified(request, id.substring(id.lastIndexOf("/") + 1));
+						loginFailed = !bean.logInByPersonalID(request, personalID);
 					}
 					catch (Exception e) {
 						e.printStackTrace();
@@ -94,25 +94,24 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		}
 		
 		if (!loginFailed) {
-			LoginBusinessBean loginBusiness = getLoginBusiness(request);
-			boolean isLoggedOn = loginBusiness.isLoggedOn(request);
-			User loggedInUser = loginBusiness.getCurrentUser(session);
-
-			processJAASLogin(request);
-			
-			boolean didInterrupt = processAuthenticationListeners(request, response, session, loggedInUser, loginBusiness, isLoggedOn);
-			if (didInterrupt) {
-				return;
-			}
-			
-			chain.doFilter(new IWJAASAuthenticationRequestWrapper(request), response);
+			chain.doFilter(request, response);
 		}
 		else {
-			chain.doFilter(request, response);
+			LoginBusinessBean loginBusiness = getLoginBusiness(request);
+
+			if (loginBusiness.isLoggedOn(request)) {
+				processJAASLogin(request);
+				
+				boolean didInterrupt = processAuthenticationListeners(request, response, session, loginBusiness);
+				if (didInterrupt) {
+					return;
+				}
+			}			
+			chain.doFilter(new IWJAASAuthenticationRequestWrapper(request), response);
 		}
 	}
 	
-	protected boolean processAuthenticationListeners(HttpServletRequest request, HttpServletResponse response, HttpSession session, User lastLoggedOnAsUser, LoginBusinessBean loginBusiness, boolean isLoggedOn) throws RemoteException {
+	protected boolean processAuthenticationListeners(HttpServletRequest request, HttpServletResponse response, HttpSession session, LoginBusinessBean loginBusiness) throws RemoteException {
 		try {
 			AuthenticationBusiness authenticationBusiness = getAuthenticationBusiness(request);
 			User currentUser = loginBusiness.getCurrentUser(session);
@@ -194,7 +193,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 
 			// verify the response; ConsumerManager needs to be the same
 			// (static) instance used to place the authentication request
-			VerificationResult verification = manager.verify(receivingURL
+			VerificationResult verification = this.manager.verify(receivingURL
 					.toString(), response, discovered);
 
 			// examine the verification result and extract the verified
@@ -223,7 +222,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 
 					// List emails = fetchResp.getAttributeValues("email");
 					// String email = (String) emails.get(0);
-
+					
 					List<?> aliases = fetchResp.getAttributeAliases();
 					for (Iterator<?> iter = aliases.iterator(); iter.hasNext();) {
 						String alias = (String) iter.next();
@@ -244,13 +243,13 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 	}
 
 	public void init(FilterConfig arg0) throws ServletException {
-		manager = (ConsumerManager) IWMainApplication.getDefaultIWApplicationContext().getApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER);
-		if (manager == null) {
+		this.manager = (ConsumerManager) IWMainApplication.getDefaultIWApplicationContext().getApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER);
+		if (this.manager == null) {
 			try {
 				this.manager = new ConsumerManager();
 				this.manager.setAssociations(new InMemoryConsumerAssociationStore());
 				this.manager.setNonceVerifier(new InMemoryNonceVerifier(5000));
-				IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, manager);
+				IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);
 			}
 			catch (ConsumerException e) {
 				throw new ServletException(e);

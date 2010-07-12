@@ -12,5 +12,6 @@ public class IWBundleStarter implements IWBundleStartable {
 	}
 
 	public void stop(IWBundle starterBundle) {
+		//No action...
 	}
 }

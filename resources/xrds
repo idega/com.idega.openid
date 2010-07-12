@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xrds:XRDS
+    xmlns:xrds="xri://$xrds"
+    xmlns:ux="http://specs.openid.net/extensions/ux/1.0"
+    xmlns="xri://$xrd*($v*2.0)">
+  <XRD>
+
+    <Service priority="0">
+      <Type>http://specs.openid.net/auth/2.0/server</Type>
+      <Type>http://openid.net/sreg/1.0</Type>
+      <URI priority="0">http://localhost:8080/openid-server</URI>
+    </Service>
+
+    <Service>
+      <Type>http://specs.openid.net/extensions/ux/1.0/friendlyname</Type>
+      <ux:friendlyname>eLykill</ux:friendlyname>
+    </Service>
+    <Service>
+      <Type>http://specs.openid.net/extensions/ux/1.0/img</Type>
+      <ux:img url="https://www.myopenid.com/static/images/myopenid_selector.png" width="48" height="48"></ux:img>
+    </Service>
+  </XRD>
+</xrds:XRDS>

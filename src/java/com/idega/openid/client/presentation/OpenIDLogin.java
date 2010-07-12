@@ -36,14 +36,14 @@ public class OpenIDLogin extends IWBaseComponent {
 		
 		PresentationUtil.addStyleSheetToHeader(iwc, getBundle(context, getBundleIdentifier()).getVirtualPathWithFileNameString("style/openid.css"));
 		
-		if (unAuthenticatedFaceletPath == null) {
-			unAuthenticatedFaceletPath = getBundle(context, getBundleIdentifier()).getFaceletURI("client/loggedOut.xhtml");
+		if (this.unAuthenticatedFaceletPath == null) {
+			this.unAuthenticatedFaceletPath = getBundle(context, getBundleIdentifier()).getFaceletURI("client/loggedOut.xhtml");
 		}
-		if (authenticatedFaceletPath == null) {
-			authenticatedFaceletPath = getBundle(context, getBundleIdentifier()).getFaceletURI("client/loggedIn.xhtml");
+		if (this.authenticatedFaceletPath == null) {
+			this.authenticatedFaceletPath = getBundle(context, getBundleIdentifier()).getFaceletURI("client/loggedIn.xhtml");
 		}
-		if (authenticationFailedFaceletPath == null) {
-			authenticationFailedFaceletPath = getBundle(context, getBundleIdentifier()).getFaceletURI("client/loginFailed.xhtml");
+		if (this.authenticationFailedFaceletPath == null) {
+			this.authenticationFailedFaceletPath = getBundle(context, getBundleIdentifier()).getFaceletURI("client/loginFailed.xhtml");
 		}
 
 		OpenIDClientBean bean = getBeanInstance("openIDClientBean");
@@ -57,7 +57,7 @@ public class OpenIDLogin extends IWBaseComponent {
 		else {
 			LoginState state = LoginBusinessBean.internalGetState(iwc);
 			if (state.equals(LoginState.LoggedOut) || state.equals(LoginState.NoState)) {
-				add(getLoggedOutPart(context, bean));
+				add(getLoggedOutPart(context));
 			}
 			else {
 				add(getLoginFailedPart(context, bean));
@@ -65,11 +65,11 @@ public class OpenIDLogin extends IWBaseComponent {
 		}
 	}
 	
-	private UIComponent getLoggedOutPart(FacesContext context, OpenIDClientBean bean) {
+	private UIComponent getLoggedOutPart(FacesContext context) {
 		IWContext iwc = IWContext.getIWContext(context);
 		
 		FaceletComponent facelet = (FaceletComponent) iwc.getApplication().createComponent(FaceletComponent.COMPONENT_TYPE);
-		facelet.setFaceletURI(unAuthenticatedFaceletPath);	
+		facelet.setFaceletURI(this.unAuthenticatedFaceletPath);	
 		
 		return facelet;
 	}
@@ -81,7 +81,7 @@ public class OpenIDLogin extends IWBaseComponent {
 		bean.setOutput(iwc.getCurrentUser().getName());
 
 		FaceletComponent facelet = (FaceletComponent) iwc.getApplication().createComponent(FaceletComponent.COMPONENT_TYPE);
-		facelet.setFaceletURI(authenticatedFaceletPath);	
+		facelet.setFaceletURI(this.authenticatedFaceletPath);	
 		
 		return facelet;
 	}
@@ -94,7 +94,7 @@ public class OpenIDLogin extends IWBaseComponent {
 		bean.setOutput(iwrb.getLocalizedString("login_failed", "Login failed"));
 
 		FaceletComponent facelet = (FaceletComponent) iwc.getApplication().createComponent(FaceletComponent.COMPONENT_TYPE);
-		facelet.setFaceletURI(authenticationFailedFaceletPath);	
+		facelet.setFaceletURI(this.authenticationFailedFaceletPath);	
 		
 		return facelet;
 	}
@@ -104,11 +104,11 @@ public class OpenIDLogin extends IWBaseComponent {
 	}
 
 	private String getStyleClass() {
-		return styleClass;
+		return this.styleClass;
 	}
 	
-	public void setStyleClass(String styleClass) {
-		this.styleClass = styleClass;
+	public void setStyleClass(String style) {
+		this.styleClass = style;
 	}
 	
 	public void setUnAuthenticatedFaceletPath(String pathToFacelet) {
