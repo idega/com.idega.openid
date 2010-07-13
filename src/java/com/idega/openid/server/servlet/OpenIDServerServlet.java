@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openid4java.association.AssociationException;
+import org.openid4java.message.AuthFailure;
 import org.openid4java.message.AuthRequest;
 import org.openid4java.message.AuthSuccess;
 import org.openid4java.message.DirectError;
@@ -27,6 +28,7 @@ import org.openid4java.message.ax.FetchResponse;
 import org.openid4java.server.InMemoryServerAssociationStore;
 import org.openid4java.server.ServerException;
 import org.openid4java.server.ServerManager;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.idega.business.IBOLookup;
 import com.idega.business.IBOLookupException;
@@ -35,14 +37,21 @@ import com.idega.core.contact.data.Email;
 import com.idega.idegaweb.IWApplicationContext;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
+import com.idega.openid.server.dao.OpenIDServerDAO;
+import com.idega.openid.server.data.AuthenticatedRealm;
 import com.idega.presentation.IWContext;
 import com.idega.user.business.NoEmailFoundException;
 import com.idega.user.business.UserBusiness;
 import com.idega.user.data.User;
+import com.idega.util.expression.ELUtil;
+import com.idega.util.text.TextSoap;
 
 public class OpenIDServerServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -7832846183877408861L;
+	
+	@Autowired
+	private OpenIDServerDAO dao;
 	
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -56,12 +65,25 @@ public class OpenIDServerServlet extends HttpServlet {
 
 		// extract the parameters from the request
         ParameterList request = new ParameterList(req.getParameterMap());
-        if (request.getParameters().size() == 0) {
-        	request = new ParameterList((Map) req.getSession().getAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP));
+        
+        Map parameterMap = (Map) req.getSession().getAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP);
+        if (request.getParameters().size() == 0 && parameterMap != null) {
+        	request = new ParameterList(parameterMap);
         }
 
         String mode = request.hasParameter(OpenIDConstants.PARAMETER_OPENID_MODE) ? request.getParameterValue(OpenIDConstants.PARAMETER_OPENID_MODE) : null;
-
+        String realm = request.hasParameter(OpenIDConstants.PARAMETER_REALM) ? request.getParameterValue(OpenIDConstants.PARAMETER_REALM) : null;
+        if (realm != null) {
+			req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_RETURN_URL, realm);
+			if (realm.indexOf("http://") != -1) {
+				realm = TextSoap.findAndCut(realm, "http://");
+			}
+			if (realm.indexOf("/") != -1) {
+				realm = realm.substring(0, realm.indexOf("/"));
+			}
+			req.getSession().setAttribute(OpenIDConstants.PARAMETER_REALM, realm);
+        }
+        
         Message response;
         String responseText = null;
 
@@ -107,6 +129,16 @@ public class OpenIDServerServlet extends HttpServlet {
 		            if (response instanceof DirectError) {
 		            	directResponse(resp, response.keyValueFormEncoding());
 		            }
+		            else if (response instanceof AuthFailure) {
+		        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP, req.getParameterMap());
+		        		
+		        		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI() + "?" + req.getQueryString();
+		        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_SERVER_URL, URL);
+
+		        		String authenticateURL = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_AUTHENTICATION_URL, "http://www.elykill.is/pages/profile/mypage/authenticate/");
+		        		resp.sendRedirect(authenticateURL);
+		        		return;
+		            }
 		            else {
 		                if (authReq.hasExtension(AxMessage.OPENID_NS_AX)) {
 		                    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
@@ -139,6 +171,11 @@ public class OpenIDServerServlet extends HttpServlet {
 		
 		                // option1: GET HTTP-redirect to the return_to URL
 		        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN);
+		        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_ALLOWED_REALM);
+		        		
+		        		User user = iwc.getCurrentUser();
+		        		getDAO().createLogEntry(user.getUniqueId(), realm);
+		        		
 		                resp.sendRedirect(response.getDestinationUrl(true));
 		                return;
 		
@@ -191,8 +228,9 @@ public class OpenIDServerServlet extends HttpServlet {
 
 	protected List<?> userInteraction(IWContext iwc, ParameterList request) throws ServerException {
 		try {
-			String realm = request.getParameterValue(OpenIDConstants.PARAMETER_REALM);
-			
+			String realm = (String) iwc.getSessionAttribute(OpenIDConstants.PARAMETER_REALM);
+			String allowedRealm = (String) iwc.getSessionAttribute(OpenIDConstants.ATTRIBUTE_ALLOWED_REALM);
+
 			User user = iwc.getCurrentUser();
 			Email email = null;
 			try {
@@ -202,7 +240,17 @@ public class OpenIDServerServlet extends HttpServlet {
 			
 			List<Object> list = new ArrayList<Object>();
 			list.add("http://" + getUserBusiness(iwc).getUserLogin(user) + ".elykill.is/pages/");
-			list.add(new Boolean(realm != null));
+
+			boolean allowed = false;
+			AuthenticatedRealm authRealm = getDAO().getAuthenticatedRealm(user.getUniqueId(), realm);
+			if (authRealm != null) {
+				allowed = true;
+			}
+			else if (allowedRealm != null && allowedRealm.equals(realm)) {
+				allowed = true;
+			}
+			list.add(new Boolean(allowed));
+			
 			list.add(email != null ? email.getEmailAddress() : "");
 			list.add(user.getPersonalID() != null ? user.getPersonalID() : "");
 			list.add(user.getName());
@@ -225,7 +273,15 @@ public class OpenIDServerServlet extends HttpServlet {
 		}
 	}
 
-    private void directResponse(HttpServletResponse httpResp, String response) throws IOException {
+	private OpenIDServerDAO getDAO() {
+		if (dao == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return dao;
+	}
+
+	private void directResponse(HttpServletResponse httpResp, String response) throws IOException {
         ServletOutputStream os = httpResp.getOutputStream();
         os.write(response.getBytes());
         os.close();

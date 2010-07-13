@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 public class OpenIDServerBean {
 
 	private String username;
+	private String realm;
 
 	public String getUsername() {
 		return username;
@@ -15,5 +16,13 @@ public class OpenIDServerBean {
 
 	public void setUsername(String username) {
 		this.username = username;
+	}
+
+	public String getRealm() {
+		return realm;
+	}
+
+	public void setRealm(String realm) {
+		this.realm = realm;
 	}
 }

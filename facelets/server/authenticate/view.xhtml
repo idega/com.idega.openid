@@ -1,0 +1,25 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+>
+<ui:component>
+	<form class="authenticateRealm" action="" method="post">
+		<input type="hidden" name="prm_action" value="" />
+		
+		<p><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.allow_realm']}" /></p>
+		<h1><h:outputText value="#{openIDServerBean.realm}" /></h1>
+		
+		<div class="formItem">
+			<input type="checkbox" name="prm_always_allow" value="true" />
+			<label for="prm_always_allow"><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.always_allow']}" /></label>
+		</div>
+		
+		<div class="buttons">
+			<a href="1"><span><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.allow']}" /></span></a>
+			<a href="2"><span><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.deny']}" /></span></a>
+		</div>
+	</form>
+</ui:component>
+</html>

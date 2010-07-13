@@ -28,7 +28,6 @@ public class OpenIDServerRequestFilter extends BaseFilter {
 		String serverName = request.getServerName();
 		String subDomain = getSubDomain(serverName);
 		if (serverName.indexOf(".") != serverName.lastIndexOf(".") && !subDomain.equals(WWW)) {
-			System.out.println("Found subdomain: " + subDomain);
 			httpRequest.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN, subDomain);
 		}
 		

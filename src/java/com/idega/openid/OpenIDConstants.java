@@ -8,6 +8,7 @@ public class OpenIDConstants {
 	public static final String PROPERTY_SERVER_URL = "openid.server.url";
 	public static final String PROPERTY_END_POINT_URL = "openid.endpoint.url";
 	public static final String PROPERTY_USER_SETUP_URL = "openid.user.setup.url";
+	public static final String PROPERTY_AUTHENTICATION_URL = "openid.authentication.url";
 	
 	public static final String PARAMETER_RETURN = "openid_return";
 	public static final String PARAMETER_IDENTIFIER = "openid_identifier";
@@ -29,5 +30,9 @@ public class OpenIDConstants {
 	public static final String ATTRIBUTE_SERVER_URL = "openid_server_url";
 	public static final String ATTRIBUTE_DO_REDIRECT = "openid_do_redirect";
 	public static final String ATTRIBUTE_SUBDOMAIN = "openid_subdomain";
+	public static final String ATTRIBUTE_ALLOWED_REALM = "openid_allowed_realm";
+	public static final String ATTRIBUTE_RETURN_URL = "openid_return_url";
+
+	public static final String STATUS_SUCCESS = "SUCCESS";
 
 }
