@@ -29,6 +29,18 @@
 	</filter-mapping>
 
 	<filter>
+		<filter-name>OpenIDServerRequestFilter</filter-name>
+		<filter-class>
+			com.idega.openid.server.filter.OpenIDServerRequestFilter
+		</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>OpenIDServerRequestFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<filter>
 		<filter-name>OpenIDServerResponseFilter</filter-name>
 		<filter-class>
 			com.idega.openid.server.filter.OpenIDServerResponseFilter

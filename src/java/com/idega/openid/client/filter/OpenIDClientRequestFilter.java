@@ -72,10 +72,6 @@ public class OpenIDClientRequestFilter extends BaseFilter {
 				fetch.addAttribute("fullname", "http://schema.openid.net/contact/fullname", true);
 				fetch.addAttribute("dob", "http://schema.openid.net/contact/dob", true);
 				fetch.addAttribute("gender", "http://schema.openid.net/contact/gender", false);
-				fetch.addAttribute("postcode", "http://schema.openid.net/contact/postcode", false);
-				fetch.addAttribute("country", "http://schema.openid.net/contact/country", false);
-				fetch.addAttribute("language", "http://schema.openid.net/contact/language", false);
-				fetch.addAttribute("timezone", "http://schema.openid.net/contact/timezone", false);
 				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_PERSONAL_ID_ALIAS, OpenIDConstants.ATTRIBUTE_PERSONAL_ID, true);
 
 				// attach the extension to the authentication request

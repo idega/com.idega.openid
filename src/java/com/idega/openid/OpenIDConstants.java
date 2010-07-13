@@ -11,6 +11,7 @@ public class OpenIDConstants {
 	
 	public static final String PARAMETER_RETURN = "openid_return";
 	public static final String PARAMETER_IDENTIFIER = "openid_identifier";
+	public static final String PARAMETER_REALM = "openid.realm";
 
 	public static final String PARAMETER_CHECK_AUTHENTICATION = "check_authentication";
 	public static final String PARAMETER_CHECKID_IMMEDIATE = "checkid_immediate";
@@ -27,5 +28,6 @@ public class OpenIDConstants {
 	public static final String ATTRIBUTE_PARAMETER_MAP = "openid_parameter_map";
 	public static final String ATTRIBUTE_SERVER_URL = "openid_server_url";
 	public static final String ATTRIBUTE_DO_REDIRECT = "openid_do_redirect";
+	public static final String ATTRIBUTE_SUBDOMAIN = "openid_subdomain";
 
 }

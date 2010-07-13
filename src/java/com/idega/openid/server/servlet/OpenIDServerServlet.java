@@ -24,9 +24,6 @@ import org.openid4java.message.ParameterList;
 import org.openid4java.message.ax.AxMessage;
 import org.openid4java.message.ax.FetchRequest;
 import org.openid4java.message.ax.FetchResponse;
-import org.openid4java.message.sreg.SRegMessage;
-import org.openid4java.message.sreg.SRegRequest;
-import org.openid4java.message.sreg.SRegResponse;
 import org.openid4java.server.InMemoryServerAssociationStore;
 import org.openid4java.server.ServerException;
 import org.openid4java.server.ServerManager;
@@ -88,6 +85,9 @@ public class OpenIDServerServlet extends HttpServlet {
 		            Boolean authenticatedAndApproved = (Boolean) userData.get(1);
 		            String email = (String) userData.get(2);
 		            String personalID = (String) userData.get(3);
+		            String fullname = (String) userData.get(4);
+		            String dateOfBirth = (String) userData.get(5);
+		            String gender = (String) userData.get(6);
 		            
 		            // --- process an authentication request ---
 		            AuthRequest authReq = AuthRequest.createAuthRequest(request, manager.getRealmVerifier());
@@ -119,27 +119,14 @@ public class OpenIDServerServlet extends HttpServlet {
 		                            FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
 		                            fetchResp.addAttribute("email", "http://schema.openid.net/contact/email", email);
 		                            fetchResp.addAttribute("personalID", "http://www.elykill.is/contact/personalID", personalID);
+		                            fetchResp.addAttribute("fullname", "http://schema.openid.net/contact/fullname", fullname);
+		                            fetchResp.addAttribute("dob", "http://schema.openid.net/contact/dob", dateOfBirth);
+		                            fetchResp.addAttribute("gender", "http://schema.openid.net/contact/gender", gender);
+		                            
 		                            response.addExtension(fetchResp);
 		                        }
 		                    }
 		                    else /*if (ext instanceof StoreRequest)*/ {
-		                        throw new UnsupportedOperationException("TODO");
-		                    }
-		                }
-		                if (authReq.hasExtension(SRegMessage.OPENID_NS_SREG)) {
-		                    MessageExtension ext = authReq.getExtension(SRegMessage.OPENID_NS_SREG);
-		                    if (ext instanceof SRegRequest) {
-		                        SRegRequest sregReq = (SRegRequest) ext;
-		                        List required = sregReq.getAttributes(true);
-		                        if (required.contains("email")) {
-		                            Map userDataSReg = new HashMap();
-		
-		                            SRegResponse sregResp = SRegResponse.createSRegResponse(sregReq, userDataSReg);
-		                            sregResp.addAttribute("email", email);
-		                            response.addExtension(sregResp);
-		                        }
-		                    }
-		                    else {
 		                        throw new UnsupportedOperationException("TODO");
 		                    }
 		                }
@@ -151,6 +138,7 @@ public class OpenIDServerServlet extends HttpServlet {
 		                // caller will need to decide which of the following to use:
 		
 		                // option1: GET HTTP-redirect to the return_to URL
+		        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN);
 		                resp.sendRedirect(response.getDestinationUrl(true));
 		                return;
 		
@@ -203,6 +191,8 @@ public class OpenIDServerServlet extends HttpServlet {
 
 	protected List<?> userInteraction(IWContext iwc, ParameterList request) throws ServerException {
 		try {
+			String realm = request.getParameterValue(OpenIDConstants.PARAMETER_REALM);
+			
 			User user = iwc.getCurrentUser();
 			Email email = null;
 			try {
@@ -212,9 +202,12 @@ public class OpenIDServerServlet extends HttpServlet {
 			
 			List<Object> list = new ArrayList<Object>();
 			list.add("http://" + getUserBusiness(iwc).getUserLogin(user) + ".elykill.is/pages/");
-			list.add(new Boolean(true));
+			list.add(new Boolean(realm != null));
 			list.add(email != null ? email.getEmailAddress() : "");
 			list.add(user.getPersonalID() != null ? user.getPersonalID() : "");
+			list.add(user.getName());
+			list.add(user.getDateOfBirth() != null ? Long.toString(user.getDateOfBirth().getTime()) : "");
+			list.add(user.getGender() != null ? (user.getGender().isMaleGender() ? "M" : "F") : "");
 			
 			return list;
 		}
