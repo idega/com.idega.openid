@@ -39,6 +39,7 @@ import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
 import com.idega.openid.server.dao.OpenIDServerDAO;
 import com.idega.openid.server.data.AuthenticatedRealm;
+import com.idega.openid.util.OpenIDUtil;
 import com.idega.presentation.IWContext;
 import com.idega.user.business.NoEmailFoundException;
 import com.idega.user.business.UserBusiness;
@@ -99,6 +100,7 @@ public class OpenIDServerServlet extends HttpServlet {
 	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_PARAMETER_MAP);
 	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_SERVER_URL);
 	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_DO_REDIRECT);
+	        		req.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN);
 	        		
 		            // interact with the user and obtain data needed to continue
 		            List userData = userInteraction(iwc, request);
@@ -193,6 +195,7 @@ public class OpenIDServerServlet extends HttpServlet {
 	        		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI() + "?" + req.getQueryString();
 	        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_SERVER_URL, URL);
 	        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_DO_REDIRECT, Boolean.TRUE.toString());
+	        		req.getSession().setAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN, new OpenIDUtil().getSubDomain(request.getParameterValue("openid.claimed_id")));
 	        		
 	        		resp.sendRedirect(manager.getUserSetupUrl());
 	        		return;
@@ -239,7 +242,7 @@ public class OpenIDServerServlet extends HttpServlet {
 			catch (NoEmailFoundException e) { /*No action...*/ }
 			
 			List<Object> list = new ArrayList<Object>();
-			list.add("http://" + getUserBusiness(iwc).getUserLogin(user) + ".elykill.is/pages/");
+			list.add("http://" + getUserBusiness(iwc).getUserLogin(user) + ".elykill.is/pages/profile/mypage/");
 
 			boolean allowed = false;
 			AuthenticatedRealm authRealm = getDAO().getAuthenticatedRealm(user.getUniqueId(), realm);

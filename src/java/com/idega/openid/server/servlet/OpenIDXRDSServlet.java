@@ -13,13 +13,12 @@ import org.openid4java.message.sreg.SRegMessage;
 
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
+import com.idega.openid.util.OpenIDUtil;
 import com.idega.openid.util.XrdsDocumentBuilder;
 
 public class OpenIDXRDSServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -2869611557380428794L;
-
-	private static final String WWW = "www";
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -29,7 +28,7 @@ public class OpenIDXRDSServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String serverName = request.getServerName();
-		String subDomain = getSubDomain(serverName);
+		String subDomain = new OpenIDUtil().getSubDomain(serverName);
 
 		XrdsDocumentBuilder documentBuilder = null;
 		if (subDomain == null) {
@@ -39,7 +38,7 @@ public class OpenIDXRDSServlet extends HttpServlet {
 			documentBuilder.addImage("http://www.elykill.is/content/files/public/elykill.png", "60", "68");
 		}
 		else {
-			String subdomainURL = request.getScheme() + "://" + request.getServerName() + "/";
+			String subdomainURL = request.getScheme() + "://" + request.getServerName() + "/pages/profile/mypage/";
 			
 			documentBuilder = new XrdsDocumentBuilder("2.0");
 			documentBuilder.addServiceElement(getOpEndpointUrl(), "0", null, null, subdomainURL, "http://specs.openid.net/auth/2.0/signon", SRegMessage.OPENID_NS_SREG, SRegMessage.OPENID_NS_SREG11, "http://schemas.openid.net/pape/policies/2007/06/phishing-resistant", AxMessage.OPENID_NS_AX);
@@ -52,15 +51,6 @@ public class OpenIDXRDSServlet extends HttpServlet {
         os.close();
 	}
 
-	private String getSubDomain(String serverName) {
-		String subdomain = null;
-		if (serverName.indexOf(".") != -1 && serverName.indexOf(".") != serverName.lastIndexOf(".") && serverName.indexOf(WWW) == -1) {
-			subdomain = serverName.substring(0, serverName.indexOf("."));
-		}
-		
-		return subdomain;
-	}
-	
 	public String getOpEndpointUrl() {
 		return IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_END_POINT_URL, "http://www.elykill.is/openid-server");
 	}

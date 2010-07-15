@@ -13,7 +13,6 @@
 				</label>
 				<ui:fragment rendered="#{not empty openIDServerBean.username}">
 					<input type="text" id="username" name="login" disabled="disabled" value="#{openIDServerBean.username}" />
-					<input type="hidden" name="username" value="#{openIDServerBean.username}" />
 				</ui:fragment>
 				<ui:fragment rendered="#{empty openIDServerBean.username}">
 					<input type="text" id="username" name="login" />
