@@ -11,6 +11,43 @@
 		<p><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.allow_realm']}" /></p>
 		<h1><h:outputText value="#{openIDServerBean.realm}" /></h1>
 		
+		
+		
+		<p> Eftirfarandi upplýsingar mun eLykill láta af hendi:<br/>
+			<t:div rendered="#{openIDServerBean.isFullNameRequested}">
+				<h:selectBooleanCheckbox id="check_fullname" value="true" disabled="#{openIDServerBean.isFullNameRequired}"/>
+				<lable for="fullname">#{localizedStrings['com.idega.openid']['Full name:']} </lable>
+				<h:inputText name="fullname" value="#{openIDAttributesBean.fullName}" size="42"/>
+				<h:outputText rendered="#{openIDServerBean.isFullNameRequired}" value=" * " />
+			</t:div>
+			<t:div rendered="#{openIDServerBean.isPersonalIDRequested}">
+				<h:selectBooleanCheckbox id="check_personal_id" value="true" disabled="#{openIDServerBean.isPersonalIDRequired}"/>
+				<lable for="personal_id">#{localizedStrings['com.idega.openid']['Personal ID:']} </lable>
+				<h:inputText name="personal_id" value="#{openIDAttributesBean.personalID}" size="10" maxlength="10"/>
+				<h:outputText rendered="#{openIDServerBean.isPersonalIDRequired}" value=" * " />
+			</t:div>
+			<t:div rendered="#{openIDServerBean.isEmailRequested}">
+				<h:selectBooleanCheckbox id="check_email" value="true" disabled="#{openIDServerBean.isEmailRequired}"/>
+				<lable for="email">#{localizedStrings['com.idega.openid']['Email:']} </lable>
+				<h:inputText name="email" value="#{openIDAttributesBean.email}" size="30"/>
+				<h:outputText rendered="#{openIDServerBean.isEmailRequired}" value=" * " />
+			</t:div>
+			<t:div rendered="#{openIDServerBean.isDateOfBirthRequested}">
+				<h:selectBooleanCheckbox id="check_dob" value="true" disabled="#{openIDServerBean.isDateOfBirthRequired}"/>
+				<lable for="dob">#{localizedStrings['com.idega.openid']['Date of birth:']} </lable>
+				<h:inputText name="dob" value="#{openIDAttributesBean.dateOfBirth}" size="10"/>
+				<h:outputText rendered="#{openIDServerBean.isDateOfBirthRequired}" value=" * " />
+			</t:div>
+			<t:div rendered="#{openIDServerBean.isGenderRequested}">
+				<h:selectBooleanCheckbox id="check_gender" value="true" disabled="#{openIDServerBean.isGenderRequired}"/>
+				<lable for="gender">#{localizedStrings['com.idega.openid']['Gender:']} </lable>
+				<h:inputText name="gender" value="#{openIDAttributesBean.gender}" size="6"/>
+				<h:outputText rendered="#{openIDServerBean.isGenderRequired}" value=" * " />
+			</t:div>
+			* #{localizedStrings['com.idega.openid']['Required fields.']}
+		</p>
+
+
 		<div class="formItem">
 			<input type="checkbox" name="prm_always_allow" value="true" />
 			<label for="prm_always_allow"><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.always_allow']}" /></label>
@@ -20,6 +57,7 @@
 			<a href="1"><span><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.allow']}" /></span></a>
 			<a href="2"><span><h:outputText value="#{localizedStrings['com.idega.openid']['authenticate.deny']}" /></span></a>
 		</div>
+
 	</form>
 </ui:component>
 </html>
