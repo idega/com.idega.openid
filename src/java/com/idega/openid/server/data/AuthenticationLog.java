@@ -32,6 +32,7 @@ public class AuthenticationLog implements Serializable {
 	private static final String COLUMN_REALM = "realm";
 	private static final String COLUMN_TIMESTAMP = "log_timestamp";
 	private static final String COLUMN_STATUS = "status";
+	private static final String COLUMN_EXCHANGED_ATTRIBUTES = "exchanged_attr";
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -50,6 +51,9 @@ public class AuthenticationLog implements Serializable {
 	
 	@Column(name = AuthenticationLog.COLUMN_STATUS)
 	private String status;
+	
+	@Column(name = AuthenticationLog.COLUMN_EXCHANGED_ATTRIBUTES, length = 2000)
+	private String exchangedAttributes;
 
 	public Long getId() {
 		return id;
@@ -90,4 +94,74 @@ public class AuthenticationLog implements Serializable {
 	public void setStatus(String status) {
 		this.status = status;
 	}
+	
+	public String getExchangedAttributes() {
+		return exchangedAttributes;
+	}
+
+	public void setExchangedAttributes(String exchangedAttributes) {
+		this.exchangedAttributes = exchangedAttributes;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime
+				* result
+				+ ((exchangedAttributes == null) ? 0 : exchangedAttributes
+						.hashCode());
+		result = prime * result + ((realm == null) ? 0 : realm.hashCode());
+		result = prime * result + ((status == null) ? 0 : status.hashCode());
+		result = prime * result
+				+ ((timestamp == null) ? 0 : timestamp.hashCode());
+		result = prime * result
+				+ ((userUUID == null) ? 0 : userUUID.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AuthenticationLog other = (AuthenticationLog) obj;
+		if (exchangedAttributes == null) {
+			if (other.exchangedAttributes != null)
+				return false;
+		} else if (!exchangedAttributes.equals(other.exchangedAttributes))
+			return false;
+		if (realm == null) {
+			if (other.realm != null)
+				return false;
+		} else if (!realm.equals(other.realm))
+			return false;
+		if (status == null) {
+			if (other.status != null)
+				return false;
+		} else if (!status.equals(other.status))
+			return false;
+		if (timestamp == null) {
+			if (other.timestamp != null)
+				return false;
+		} else if (!timestamp.equals(other.timestamp))
+			return false;
+		if (userUUID == null) {
+			if (other.userUUID != null)
+				return false;
+		} else if (!userUUID.equals(other.userUUID))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "AuthenticationLog [exchangedAttributes=" + exchangedAttributes
+				+ ", id=" + id + ", realm=" + realm + ", status=" + status
+				+ ", timestamp=" + timestamp + ", userUUID=" + userUUID + "]";
+	}
+	
 }

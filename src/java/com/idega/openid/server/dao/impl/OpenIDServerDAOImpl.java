@@ -1,5 +1,6 @@
 package com.idega.openid.server.dao.impl;
 
+import java.util.Date;
 import java.util.List;
 
 import javax.persistence.Query;
@@ -13,8 +14,9 @@ import com.idega.core.persistence.Param;
 import com.idega.core.persistence.impl.GenericDaoImpl;
 import com.idega.openid.OpenIDConstants;
 import com.idega.openid.server.dao.OpenIDServerDAO;
-import com.idega.openid.server.data.AuthenticatedRealm;
 import com.idega.openid.server.data.AuthenticationLog;
+import com.idega.openid.server.data.AuthorizedAttribute;
+import com.idega.openid.server.data.ExchangeAttribute;
 import com.idega.util.IWTimestamp;
 
 @Repository("openIDServerDAO")
@@ -23,37 +25,72 @@ import com.idega.util.IWTimestamp;
 public class OpenIDServerDAOImpl extends GenericDaoImpl implements OpenIDServerDAO {
 
 	@Transactional(readOnly = false)
-	public void createAuthenticatedRealm(String userUUID, String realm) {
-		AuthenticatedRealm authRealm = new AuthenticatedRealm();
-		authRealm.setUserUUID(userUUID);
-		authRealm.setRealm(realm);
-		authRealm.setAddedWhen(IWTimestamp.getTimestampRightNow());
+	public void createAuthorizedAttribute(String userUUID, String realm, ExchangeAttribute attribute) {
+		AuthorizedAttribute authAttr = new AuthorizedAttribute();
+		authAttr.setUserUUID(userUUID);
+		authAttr.setRealm(realm);
+		authAttr.setExchangeAttribute(attribute);
+		authAttr.setIsAllowed(true);
+		authAttr.setAddedWhen(IWTimestamp.getTimestampRightNow());
 		
-		getEntityManager().persist(authRealm);
+		getEntityManager().persist(authAttr);
 	}
 	
-	public List<AuthenticatedRealm> getAuthenticatedRealmsByUser(String userUUID) {
-		Query q = createNamedQuery("authRealm.findAllByUser");
-		q.setParameter("userUUID", userUUID);
-		List<AuthenticatedRealm> names = q.getResultList();
-		return names;
-	}
-	
-	public AuthenticatedRealm getAuthenticatedRealm(String userUUID, String realm) {
+	public List<AuthorizedAttribute> getAuthorizedAttributes(String userUUID, String realm) {
 		Param p1 = new Param("userUUID", userUUID);
 		Param p2 = new Param("realm", realm);
 		
-		return getSingleResult("authRealm.findByUserAndRealm", AuthenticatedRealm.class, p1, p2);
+		return getResultList("authAttr.findByUserAndRealm", AuthorizedAttribute.class, p1, p2);
+	}
+	
+	public AuthorizedAttribute getAuthorizedAttributes(String userUUID, String realm, ExchangeAttribute attr) {
+		Param p1 = new Param("userUUID", userUUID);
+		Param p2 = new Param("realm", realm);
+		Param p3 = new Param("exchangeAttribute",attr);
+		
+		return getSingleResult("authAttr.findByUserAndRealmAndExchangeAttribute", AuthorizedAttribute.class, p1, p2, p3);
 	}
 
 	@Transactional(readOnly = false)
-	public void createLogEntry(String userUUID, String realm) {
+	public void createLogEntry(String userUUID, String realm, String exchangedAttributes) {
 		AuthenticationLog log = new AuthenticationLog();
 		log.setUserUUID(userUUID);
 		log.setRealm(realm);
 		log.setTimestamp(IWTimestamp.getTimestampRightNow());
 		log.setStatus(OpenIDConstants.STATUS_SUCCESS);
+		log.setExchangedAttributes(exchangedAttributes);
 		
 		getEntityManager().persist(log);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<ExchangeAttribute> getAllExchangeAttributes() {
+		Query q = createNamedQuery("exchangeAttr.findAll");
+		List<ExchangeAttribute> attr = q.getResultList();
+		return attr;
+	}
+	
+	@Transactional(readOnly = false)
+	public void createExchangeAttribute(String name, String type) {
+		ExchangeAttribute attr = new ExchangeAttribute();
+		attr.setName(name);
+		attr.setType(type);
+		attr.setAddedWhen(new Date());
+		getEntityManager().persist(attr);
+	}
+
+	@Override
+	public ExchangeAttribute getExchangeAttribute(String name, String type) {
+		Param p1 = new Param("name", name);
+		Param p2 = new Param("type", type);
+		
+		return getSingleResult("exchangeAttr.findByNameAndType", ExchangeAttribute.class, p1, p2);
+	}
+	
+	public void saveAuthorizedAttribute(AuthorizedAttribute attr){
+		if(attr.isNotYetStored()){
+			attr.setAddedWhen(new Date());
+		}
+		getEntityManager().persist(attr);
 	}
 }

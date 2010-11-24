@@ -4,7 +4,9 @@
     xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm http://java.sun.com/xml/ns/persistence/orm_1_0.xsd"
     version="1.0">
 
-    <entity class="com.idega.openid.server.data.AuthenticatedRealm" />
     <entity class="com.idega.openid.server.data.AuthenticationLog" />
+    <entity class="com.idega.openid.server.data.AuthorizedAttribute" />
+    <entity class="com.idega.openid.server.data.ExchangeAttribute" />
+    <entity class="com.idega.openid.server.data.RegisteredRealm" />
         
 </entity-mappings>

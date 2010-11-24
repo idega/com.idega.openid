@@ -27,6 +27,7 @@ import org.openid4java.consumer.InMemoryNonceVerifier;
 import org.openid4java.consumer.VerificationResult;
 import org.openid4java.discovery.DiscoveryInformation;
 import org.openid4java.discovery.Identifier;
+import org.openid4java.discovery.yadis.YadisResolver;
 import org.openid4java.message.AuthSuccess;
 import org.openid4java.message.MessageExtension;
 import org.openid4java.message.ParameterList;
@@ -77,7 +78,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 					loginFailed = true;
 				}
 				else {
-					String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_PERSONAL_ID_ALIAS);
+					String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID);
 					
 					try {
 						loginFailed = !bean.logInByPersonalID(request, personalID);
@@ -242,18 +243,61 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		return null;
 	}
 
-	public void init(FilterConfig arg0) throws ServletException {
+	public void init(FilterConfig config) throws ServletException {
 		this.manager = (ConsumerManager) IWMainApplication.getDefaultIWApplicationContext().getApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER);
 		if (this.manager == null) {
-			try {
-				this.manager = new ConsumerManager();
-				this.manager.setAssociations(new InMemoryConsumerAssociationStore());
-				this.manager.setNonceVerifier(new InMemoryNonceVerifier(5000));
-				IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);
-			}
-			catch (ConsumerException e) {
-				throw new ServletException(e);
-			}
+			initializeConsumerManager();
 		}
 	}
+
+	private void initializeConsumerManager() throws ServletException {
+		try {
+			this.manager = new ConsumerManager();
+			this.manager.setAssociations(new InMemoryConsumerAssociationStore());
+			String timout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_TIMEOUT, "5000");
+			int t = 5000; //in seconds
+			try {
+				t=Integer.parseInt(timout);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			this.manager.setNonceVerifier(new InMemoryNonceVerifier(t));
+			
+			String ConnectionTimout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_CONNECTION_TIMEOUT, "10000");
+			int ct = 10000; //in milliseconds
+			try {
+				ct=Integer.parseInt(ConnectionTimout);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			this.manager.setConnectTimeout(ct);
+			
+			String SocketTimout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_SOCKET_TIMEOUT, "10000");
+			int st = 10000; //in milliseconds
+			try {
+				st=Integer.parseInt(SocketTimout);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			this.manager.setSocketTimeout(st);
+			
+			String maxRedirects = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_MAX_REDIRECTS, "10");
+			int mrd = 10;
+			try {
+				mrd=Integer.parseInt(maxRedirects);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			YadisResolver resolver = new YadisResolver();
+			resolver.setMaxRedirects(mrd);
+			this.manager.getDiscovery().setYadisResolver(resolver);
+			
+			IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);	
+		}
+		catch (ConsumerException e) {
+			throw new ServletException(e);
+		}
+	}
+	
 }

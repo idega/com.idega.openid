@@ -130,6 +130,9 @@ public class XrdsDocumentBuilder {
 		return w.toString();
 	}
 
+	/**
+	 * Test method
+	 */
 	public static void main(String[] arguments) {
 		XrdsDocumentBuilder documentBuilder = new XrdsDocumentBuilder("2.0");
 		documentBuilder.addServiceElement("http://www.elykill.is/openid-server", "0", null, null, "http://laddi.elykill.is", "http://specs.openid.net/auth/2.0/signon", SRegMessage.OPENID_NS_SREG, SRegMessage.OPENID_NS_SREG11, "http://schemas.openid.net/pape/policies/2007/06/phishing-resistant", AxMessage.OPENID_NS_AX);

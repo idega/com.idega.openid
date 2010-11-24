@@ -16,14 +16,13 @@ public class OpenIDLogin extends Login2 {
 		IWContext iwc = IWContext.getIWContext(context);
 
 		setUnAuthenticatedFaceletPath(getBundle(context, OpenIDConstants.IW_BUNDLE_IDENTIFIER).getFaceletURI("server/login/loggedOut.xhtml"));
-		if (!iwc.isLoggedOn() && iwc.getSessionAttribute(OpenIDConstants.ATTRIBUTE_DO_REDIRECT) != null) {
-			OpenIDServerBean bean = getBeanInstance("openIDServerBean");
+		OpenIDServerBean bean = getBeanInstance("openIDServerBean");
+		if (!iwc.isLoggedOn() && bean.getDoRedirect() != null) {
 			
-			String subdomain = (String) iwc.getSessionAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN);
-			bean.setUsername(subdomain);
-			iwc.setSessionAttribute(LoginBusinessBean.PARAMETER_USERNAME, subdomain);
+			iwc.setSessionAttribute(LoginBusinessBean.PARAMETER_USERNAME, bean.getUsername());
 			
-			this.setURLToRedirectToOnLogon((String) iwc.getSessionAttribute(OpenIDConstants.ATTRIBUTE_SERVER_URL));
+			this.setURLToRedirectToOnLogon(bean.getServerUrl());
+			this.setURLToRedirectToOnLogonFailed(bean.getServerUrl());
 		}
 
 		super.initializeComponent(context);

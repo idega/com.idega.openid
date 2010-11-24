@@ -19,6 +19,7 @@ import org.openid4java.consumer.ConsumerManager;
 import org.openid4java.consumer.InMemoryConsumerAssociationStore;
 import org.openid4java.consumer.InMemoryNonceVerifier;
 import org.openid4java.discovery.DiscoveryInformation;
+import org.openid4java.discovery.yadis.YadisResolver;
 import org.openid4java.message.AuthRequest;
 import org.openid4java.message.ax.FetchRequest;
 
@@ -26,7 +27,9 @@ import com.idega.core.accesscontrol.business.LoginBusinessBean;
 import com.idega.core.accesscontrol.business.LoginState;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
+import com.idega.openid.client.bean.OpenIDClientBean;
 import com.idega.servlet.filter.BaseFilter;
+import com.idega.util.expression.ELUtil;
 
 public class OpenIDClientRequestFilter extends BaseFilter {
 
@@ -68,11 +71,11 @@ public class OpenIDClientRequestFilter extends BaseFilter {
 				// Attribute Exchange example: fetching the 'email' attribute
 				FetchRequest fetch = FetchRequest.createFetchRequest();
 
-				fetch.addAttribute("email", "http://schema.openid.net/contact/email", true);
-				fetch.addAttribute("fullname", "http://schema.openid.net/contact/fullname", true);
-				fetch.addAttribute("dob", "http://schema.openid.net/contact/dob", true);
-				fetch.addAttribute("gender", "http://schema.openid.net/contact/gender", false);
-				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_PERSONAL_ID_ALIAS, OpenIDConstants.ATTRIBUTE_PERSONAL_ID, true);
+				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_EMAIL, OpenIDConstants.ATTRIBUTE_TYPE_EMAIL, true);
+				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_FULL_NAME, OpenIDConstants.ATTRIBUTE_TYPE_FULL_NAME, true);
+				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_DATE_OF_BIRTH, OpenIDConstants.ATTRIBUTE_TYPE_DATE_OF_BIRTH, true);
+				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_GENDER, OpenIDConstants.ATTRIBUTE_TYPE_GENDER, false);
+				fetch.addAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID, OpenIDConstants.ATTRIBUTE_TYPE_PERSONAL_ID, true);
 
 				// attach the extension to the authentication request
 				if (!fetch.getAttributes().isEmpty()) {
@@ -96,15 +99,57 @@ public class OpenIDClientRequestFilter extends BaseFilter {
 	public void init(FilterConfig config) throws ServletException {
 		this.manager = (ConsumerManager) IWMainApplication.getDefaultIWApplicationContext().getApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER);
 		if (this.manager == null) {
+			initializeConsumerManager();
+		}
+	}
+
+	private void initializeConsumerManager() throws ServletException {
+		try {
+			this.manager = new ConsumerManager();
+			this.manager.setAssociations(new InMemoryConsumerAssociationStore());
+			String timout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_TIMEOUT, "5000");
+			int t = 5000; //in seconds
 			try {
-				this.manager = new ConsumerManager();
-				this.manager.setAssociations(new InMemoryConsumerAssociationStore());
-				this.manager.setNonceVerifier(new InMemoryNonceVerifier(5000));
-				IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);
+				t=Integer.parseInt(timout);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-			catch (ConsumerException e) {
-				throw new ServletException(e);
+			this.manager.setNonceVerifier(new InMemoryNonceVerifier(t));
+			
+			String ConnectionTimout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_CONNECTION_TIMEOUT, "10000");
+			int ct = 10000; //in milliseconds
+			try {
+				ct=Integer.parseInt(ConnectionTimout);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
+			this.manager.setConnectTimeout(ct);
+			
+			String SocketTimout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_SOCKET_TIMEOUT, "10000");
+			int st = 10000; //in milliseconds
+			try {
+				st=Integer.parseInt(SocketTimout);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			this.manager.setSocketTimeout(st);
+			
+			String maxRedirects = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_MAX_REDIRECTS, "10");
+			int mrd = 10;
+			try {
+				mrd=Integer.parseInt(maxRedirects);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			YadisResolver resolver = new YadisResolver();
+			resolver.setMaxRedirects(mrd);
+			this.manager.getDiscovery().setYadisResolver(resolver);
+			
+			IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);	
+		}
+		catch (ConsumerException e) {
+			throw new ServletException(e);
 		}
 	}
 }
