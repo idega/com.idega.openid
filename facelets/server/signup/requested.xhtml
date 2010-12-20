@@ -1,0 +1,39 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+>
+<ui:component>
+	<h:form class="registerNewUser" method="post">
+		
+		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
+		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.requested']}" /></h2>
+		
+		<p>
+			Innan 30 mínútna á þér að berast tölvupóstur á netfangið #{openIDSignUpBean.email} með leiðbeiningum
+			næstu skref.
+		</p>
+		
+		
+		
+		
+		<br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>	
+		<div class="buttons">
+			<hr/>
+			<p>For testing...</p>
+			<p><a href="?confirm_id=#{openIDSignUpBean.confirmID}">Næsta skref</a></p>
+			<p>Auðkenningarkóðinn er: #{openIDSignUpBean.identificationCode}</p>
+			
+			<hr/>
+			<p>#{openIDSignUpBean.errorMessage}</p>
+			<ui:remove>
+			<h:commandLink action="#{openIDSignUpBean.toConfirm}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.next']}" /></h:commandLink> 
+			<h:outputText value=" " />
+			<h:commandLink action="#{openIDSignUpBean.cancel}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.cancel']}" /></h:commandLink>
+			</ui:remove>
+		</div>
+
+	</h:form>
+</ui:component>
+</html>

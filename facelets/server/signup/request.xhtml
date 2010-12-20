@@ -1,0 +1,106 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+		xmlns:wf="http://xmlns.idega.com/com.idega.webface"
+>
+<ui:component>
+	<h:form class="registerNewUser" method="post">
+		
+		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
+		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.request']}" /></h2>
+		
+		<p>Vinsamlegast skráið inn kennitölu og tölvupóstfang sem og aðrar upplýsingar eftir því sem við á.</p>
+		<p>Nauðsynlegt er að skrá tölvupóstfang þar sem kerfið sendir aðganginn samstundis með tölvupósti.</p>
+		
+		<style type="text/css">
+			.notify-box {border: 1px solid #fed22f; background: #ffe45c; color: #363636; }
+		</style>
+		
+		<div >
+		<p><t:messages showDetail="true" showSummary="false" styleClass="notify-box" style="margin-top: 20px; padding: .7em .7em .7em 3em;" errorStyle="color:red; font-weight: bold;"/></p>
+		</div>
+		
+		<p>
+			<h:outputLabel for="new_nick" value="Notendanafn: "/>
+			<h:inputText id="new_nick" value="#{openIDSignUpBean.login}" required="true">
+				<wf:loginValidator />
+				<t:jsValueChangeListener for="openidpath" property="value" expressionValue="$srcElem.value" />
+			</h:inputText><h:outputText value=".elykill.is"/>
+			
+			<ui:remove>
+			<br/>
+			<t:message id="nickError" for="new_nick" styleClass="error"/>
+			
+			
+			<br/><br/>
+			<h:outputText id="openidpath" value=":  http://#{openIDSignUpBean.login}.elykill.is"/>
+			
+			<br/><br/>
+			<h:outputText style="color:green;" value="Notendanafn er laust"/> / <h:outputText style="color:red;" value="Notendanafn er frátekið"/>
+			</ui:remove>
+		</p>
+		<p>
+			<h:outputLabel for="ssn" value="Kennitala"/><h:outputText value=":  "/>
+			<h:inputText id="ssn" value="#{openIDSignUpBean.personalID}" readonly="false" required="true">
+				<wf:personalIdValidator />
+			</h:inputText>
+			<ui:remove><t:message id="ssnError" for="ssn" styleClass="error"/></ui:remove>
+		</p>
+		
+		
+		<p>
+			<h:outputLabel for="email" value="Netfang"/><h:outputText value=":  "/>
+			<h:inputText id="email" value="#{openIDSignUpBean.email}" readonly="false" required="true">
+				<t:validateEmail
+	                             summaryMessage='#{"Netfang er ekki rétt skráð"}'
+	                             detailMessage='#{"{0} er ekki gilt netfang"}'/>
+			</h:inputText>
+			<ui:remove><t:message id="equalError" for="equal" styleClass="error"/></ui:remove>
+		</p>
+		<p>
+			<h:outputLabel for="email2" value="Netfang aftur"/><h:outputText value=":  "/>
+			<h:inputText id="email2" value="#{openIDSignUpBean.emailConfirmed}" readonly="false" required="true">
+				<t:validateEqual for="email"
+	                             summaryMessage='#{"Netfang og staðfest netfang eru ekki eins"}'
+	                             detailMessage='#{"Netfang og staðfest netfang eru ekki eins. {0} og {1} ætti að vera það sama"}'/>
+			</h:inputText>
+			<ui:remove><t:message id="equal2Error" for="email2" styleClass="error"/></ui:remove>
+			<br/>
+		</p>
+		
+		<ui:remove>
+		<p>
+			<h:outputLabel for="equal" value="#{example_messages['validate_equal']} Jafnt"/>
+	        <h:inputText id="equal" value="#{openIDSignUpBean.email}" required="true">
+	        	<t:validateEmail />
+	        </h:inputText>
+	        <t:message id="equalError" for="equal" styleClass="error"/>
+	
+	        <h:outputLabel for="equal2" value="#{example_messages['validate_equal']} Jafnt 2"/>
+	        <h:inputText id="equal2" value="#{openIDSignUpBean.emailConfirmed}" required="true">
+	            <t:validateEqual for="equal"
+	                             summaryMessage='#{"Value {0} should equal {1}"}'
+	                             detailMessage='#{"The value of this field, {0}, should equal the value of that other field, {1}"}'/>
+	        </h:inputText>
+	        <t:message id="equal2Error" for="equal2" styleClass="error"/>
+		</p>
+		</ui:remove>
+		
+		<ui:remove>
+		<p>
+			<h:selectBooleanCheckbox  id="snailmail" type="checkbox" value="#{openIDSignUpBean.sendSnailMail}" />
+			<label for="snailmail"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.sendSnailMail']}" /></label>
+		</p>
+		</ui:remove>
+	
+		<p class="buttons">
+			<h:commandLink action="#{openIDSignUpBean.request}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.request']}" /></h:commandLink> 
+			<h:outputText value=" " />
+			<h:commandLink action="#{openIDSignUpBean.cancel}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.cancel']}" /></h:commandLink>
+		</p>
+
+	</h:form>
+</ui:component>
+</html>

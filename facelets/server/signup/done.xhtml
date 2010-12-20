@@ -1,0 +1,22 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+>
+<ui:component>
+	<h:form class="registerNewUser" method="post">
+		
+		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
+		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.done']}" /></h2>
+		
+		<p>Til hamingju! Þú hefur nú tryggt þér auðkennið "#{openIDSignUpBean.login}" á eLykill.is 
+		   og OpenID auðkennisslóðina <a href="http://#{openIDSignUpBean.login}.elykill.is">http://#{openIDSignUpBean.login}.elykill.is</a></p>
+		
+		<div class="buttons">
+			<h:commandLink action="#{openIDSignUpBean.cancel}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.done']}" /></h:commandLink>
+		</div>
+
+	</h:form>
+</ui:component>
+</html>

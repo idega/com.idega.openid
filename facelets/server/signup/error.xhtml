@@ -1,0 +1,18 @@
+<html
+		xmlns:ui="http://java.sun.com/jsf/facelets"
+		xmlns:h="http://java.sun.com/jsf/html"
+		xmlns:t="http://myfaces.apache.org/tomahawk"
+		xmlns:f="http://java.sun.com/jsf/core"
+>
+<ui:component>
+	<h:form class="registerNewUser" method="post">
+		
+		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
+		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.error']}" /></h2>
+		
+		<p>Eftirfarandi villa kom upp við skráningu:</p>
+		<p><h:outputText value="#{openIDSignUpBean.errorMessage}" /></p>
+		
+	</h:form>
+</ui:component>
+</html>

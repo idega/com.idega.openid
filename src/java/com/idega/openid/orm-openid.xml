@@ -7,6 +7,7 @@
     <entity class="com.idega.openid.server.data.AuthenticationLog" />
     <entity class="com.idega.openid.server.data.AuthorizedAttribute" />
     <entity class="com.idega.openid.server.data.ExchangeAttribute" />
+    <entity class="com.idega.openid.server.data.OpenIdSignupInfo" />
     <entity class="com.idega.openid.server.data.RegisteredRealm" />
         
 </entity-mappings>

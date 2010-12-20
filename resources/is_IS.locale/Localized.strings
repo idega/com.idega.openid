@@ -1,0 +1,18 @@
+signup.heading=Nýskráning
+signup.state.request=Sækja um auðkenni
+signup.sendSnailMail=Fá staðfestingarkóða með landpósti á lögheimili frekar en í heimabankann
+signup.request=Senda
+signup.cancel=Hætta við
+
+signup.state.requested=Umsókn móttekin
+
+signup.state.confirm=Staðfesta auðkenningu
+signup.conform=Staðfesta
+
+signup.state.signup=Virkja aðgang
+signup.activate=Virkja
+male=Karl
+female=Kona
+
+signup.state.done=Nýskráningu lokið
+signup.done=Aftur á upphafssíðu
