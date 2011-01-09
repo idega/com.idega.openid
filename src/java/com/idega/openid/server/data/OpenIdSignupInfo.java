@@ -51,7 +51,7 @@ public class OpenIdSignupInfo implements Serializable {
 	@Column(name = OpenIdSignupInfo.COLUMN_ID)
 	private Long id;
 	
-	@Column(name = OpenIdSignupInfo.COLUMN_CONFIRM_ATTRIBUTE, length = 30)
+	@Column(name = OpenIdSignupInfo.COLUMN_CONFIRM_ATTRIBUTE, length = 40)
 	private String confirmAttribute;
 	@Column(name = OpenIdSignupInfo.COLUMN_CONFIRM_CODE, length = 30)
 	private String confirmCode;

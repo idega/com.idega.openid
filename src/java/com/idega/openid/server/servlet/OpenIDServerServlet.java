@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -56,6 +57,8 @@ import com.idega.util.text.TextSoap;
 public class OpenIDServerServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -7832846183877408861L;
+	
+	private static Logger LOGGER = Logger.getLogger(OpenIDServerServlet.class.getName());
 	
 	@Autowired
 	private OpenIDServerDAO dao;
@@ -370,26 +373,30 @@ public class OpenIDServerServlet extends HttpServlet {
 		// If it has been stored, it is always allow, otherwise it is not
 		if(allowAction){
 			allowed = true; //allow by default if allow action
-			for(AuthorizedAttribute attr : allAttributes){
-				if(!attr.getIsAllowed() && required.contains(attr)){
-					//If not allowed but required
-					return false;
+			if(allAttributes != null){
+				for(AuthorizedAttribute attr : allAttributes){
+					if(!attr.getIsAllowed() && required.contains(attr)){
+						//If not allowed but required
+						return false;
+					}
 				}
 			}
 		} else {
 			//denied by default if no attributes are requested, i.e. no always allow option
 			//if there are no attributes requested
-			for(AuthorizedAttribute attr : allAttributes){
-				//Check if not always allowed
-				if(attr.isNotYetStored()){
-					//Not always-allow and not an allow-action, hence not allowed
-					return false;
-				}
-				if(!attr.getIsAllowed() && required.contains(attr)){
-					//If not allowed but required
-					return false;
-				} else {
-					allowed = true;
+			if(allAttributes != null){
+				for(AuthorizedAttribute attr : allAttributes){
+					//Check if not always allowed
+					if(attr.isNotYetStored()){
+						//Not always-allow and not an allow-action, hence not allowed
+						return false;
+					}
+					if(!attr.getIsAllowed() && required.contains(attr)){
+						//If not allowed but required
+						return false;
+					} else {
+						allowed = true;
+					}
 				}
 			}
 		}
@@ -450,7 +457,8 @@ public class OpenIDServerServlet extends HttpServlet {
                     			optionalAttributesList.add(aattr);
                     		}
                     	} else {
-                    		throw new UnsupportedOperationException("Requesting unknown exchange attribute.");
+                    		LOGGER.warning("Requesting unknown exchange attribute: "+alias+ " : " + allAttributes.get(alias));
+                    		//throw new UnsupportedOperationException("Requesting unknown exchange attribute.");
                     	}
                     }
                     
@@ -460,6 +468,7 @@ public class OpenIDServerServlet extends HttpServlet {
                     serverBean.setOptionalAttributes(optionalAttributesList);
                 }
                 else /*if (ext instanceof StoreRequest)*/ {
+                	//TODO implement?
                     throw new UnsupportedOperationException("TODO");
                 }
 			} catch (MessageException e) {

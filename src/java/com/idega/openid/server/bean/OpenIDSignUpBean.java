@@ -20,6 +20,7 @@ import com.idega.business.IBOLookup;
 import com.idega.business.IBOLookupException;
 import com.idega.business.IBORuntimeException;
 import com.idega.core.file.util.MimeTypeUtil;
+import com.idega.core.idgenerator.business.UUIDGenerator;
 import com.idega.core.location.data.Address;
 import com.idega.core.messaging.EmailMessage;
 import com.idega.core.messaging.MessagingSettings;
@@ -98,19 +99,39 @@ public class OpenIDSignUpBean {
 
 	
 	private static final String DEFAULT_SIGNUP_SUBJECT = "Nýskráning á eLykill.is";
-	private static final String LOCALIZED_SIGNUP_SUBJECT_KEY = "openid.signup.email.subject.format";
-	private static final String DEFAULT_SIGNUP_BODY = 
+	private static final String LOCALIZED_SIGNUP_EMAIL_SUBJECT_KEY = "openid.signup.email.subject.format";
+	private static final String DEFAULT_SIGNUP_EMAIL_BODY = 
 		"Góðan dag {0}.\n\r<br/> " +
-		"Okkur er sönn ánægja að svara beiðni þinni um að stofna eLykil fyrir þig.  " +
+		"Okkur er sönn ánægja að svara beiðni þinni um stofnun elykils.  " +
 		"Til þess að virkja eLykilinn þinn þarft þú að sýna fram á að rétt kennitala hafi verið gefin upp " +
-		"og að hún eigi við þig. Til þess að gera það hefur þú valið að nota heimbankann þinn.  Ferlið er í tveimur skrefum. " +
+		"og að hún eigi við þig. Ferlið er í tveimur skrefum. " +
 		"Fyrst opnar þú rafrænt skjal sem þér hefur borist í heimabankann frá elykill.is.  Í því skjali er staðfestingarkóði sem þú " +
 		"skráir inn á slóðinni <a href=\"http://www.elykill.is/pages/signup?confirm_id={1}\" >http://www.elykill.is/pages/signup?confirm_id={1}</a>." +
 		"\n\r<br/>" +
-		" ";
-	private static final String LOCALIZED_SIGNUP_BODY_KEY = "openid.signup.email.body.format";
-	private static final String DEFAULT_SIGNUP_SENDER = "eLykill.is";
-	private static final String LOCALIZED_SIGNUP_SENDER_KEY = "openid.signup.email.sender.name";
+		"\n\r<br/>" +
+		"Með bestu kveðju," +
+		"\n\r<br/>" +
+		"eLykill.is";
+	private static final String LOCALIZED_SIGNUP_EMAIL_BODY_KEY = "openid.signup.email.body.format";
+	private static final String DEFAULT_SIGNUP_EMAIL_SENDER = "eLykill.is";
+	private static final String LOCALIZED_SIGNUP_EAMIL_SENDER_KEY = "openid.signup.email.sender.name";
+	
+	private static final String DEFAULT_SIGNUP_BANK_SUBJECT = "Nýskráning á eLykill.is";
+	private static final String LOCALIZED_SIGNUP_BANK_SUBJECT_KEY = "openid.signup.bank.subject.format";
+	private static final String DEFAULT_SIGNUP_BANK_BODY = 
+		"Góðan dag {0}.\n\r<br/> " +
+		"Okkur hefur borist beiðni um stofnun eLykils fyrir þig.  Til þess að staðfesta skráninguna þarft þú að " +
+		"skrá eftirfarandi kóða inn á síðu eLykilsins.  Nánari upplýsingar er að finna í tölvupósti sem borist hefur á " +
+		"netfangið {1}, sem gefið var upp við nýskráninguna." +
+		"\n\r<br/>" +
+		"\n\r<br/>" +
+		"Kóðinn er: {2}" +
+		"\n\r<br/>" +
+		"\n\r<br/>" +
+		"Með bestu kveðju," +
+		"\n\r<br/>" +
+		"eLykill.is";
+	private static final String LOCALIZED_SIGNUP_BANK_BODY_KEY = "openid.signup.bank.body.format";
 
 	public int getState() {
 		return state;
@@ -336,7 +357,8 @@ public class OpenIDSignUpBean {
 	public void request(){
 		IWContext iwc = IWContext.getCurrentInstance();
 
-		String cID = StringHandler.getRandomString(22);
+//		String cID = StringHandler.getRandomString(22);
+		String cID = UUIDGenerator.getInstance().generateUUID();
 		setConfirmID(cID);
 		String idCode = StringHandler.getRandomStringNonAmbiguous(8);
 		setIdentificationCode(idCode);
@@ -431,17 +453,22 @@ public class OpenIDSignUpBean {
 			usrName += " " + middleName;
 		}
 		
-		Object[] arguments = new String[2];
-		arguments[0] = usrName;
-		arguments[1] = getConfirmID();
+		Object[] eMailArguments = new String[2];
+		eMailArguments[0] = usrName;
+		eMailArguments[1] = getConfirmID();
 		
-		boolean success = sendEmail(iwc, arguments);
+		boolean success = sendEmail(iwc, eMailArguments);
 		if(!success){
 			//Error occurred
 			return;
 		}
 		
-		success = sendLetterToBank(iwc, arguments);
+		Object[] bankArguments = new String[3];
+		bankArguments[0] = usrName;
+		bankArguments[1] = getEmail();
+		bankArguments[2] = getIdentificationCode();
+		
+		success = sendLetterToBank(iwc, bankArguments);
 		if(!success){
 			//Error occurred
 			return;
@@ -452,6 +479,33 @@ public class OpenIDSignUpBean {
 
 
 	private boolean sendLetterToBank(IWContext iwc, Object[] arguments) {
+		
+		IWResourceBundle iwrb = iwc.getIWMainApplication().getBundle(getBundleIdentifier()).getResourceBundle(iwc);
+		
+		String subject = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_BANK_SUBJECT_KEY, DEFAULT_SIGNUP_BANK_SUBJECT, arguments);
+		String body = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_BANK_BODY_KEY, DEFAULT_SIGNUP_BANK_BODY, arguments);
+		
+		//TMP
+		String senderName = iwrb.getLocalizedString(LOCALIZED_SIGNUP_EAMIL_SENDER_KEY, DEFAULT_SIGNUP_EMAIL_SENDER);
+		String fromAddress = iwc.getApplicationSettings().getProperty(MessagingSettings.PROP_MESSAGEBOX_FROM_ADDRESS,MessagingSettings.DEFAULT_MESSAGEBOX_FROM_ADDRESS);
+		EmailMessage message = new EmailMessage(subject,body);
+		message.setToAddress(getEmail());
+		message.setSenderName(senderName);
+		message.setFromAddress(fromAddress);
+		message.setMailType(MimeTypeUtil.MIME_TYPE_HTML);
+		try {
+			message.send();
+		} catch (MessagingException e) {
+			e.printStackTrace();
+			log.warning("Message could not be sent to bank:" + e.getMessage());
+			setErrorCode(ERROR_CODE_MESSAGE_NOT_SENT_TO_BANK);
+			setErrorMessage(ERREOR_MESSAGE_ID_MESSAGE_NOT_SENT_TO_BANK);
+			setState(STATE_ERROR_OCCURRED);
+			return false;
+		}
+		//TMP ends
+
+		
 		
 //		try {
 //			//TODO send to bank
@@ -471,9 +525,9 @@ public class OpenIDSignUpBean {
 		
 		IWResourceBundle iwrb = iwc.getIWMainApplication().getBundle(getBundleIdentifier()).getResourceBundle(iwc);
 		
-		String subject = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_SUBJECT_KEY, DEFAULT_SIGNUP_SUBJECT, arguments);
-		String body = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_BODY_KEY, DEFAULT_SIGNUP_BODY, arguments);
-		String senderName = iwrb.getLocalizedString(LOCALIZED_SIGNUP_SENDER_KEY, DEFAULT_SIGNUP_SENDER);
+		String subject = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_EMAIL_SUBJECT_KEY, DEFAULT_SIGNUP_SUBJECT, arguments);
+		String body = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_EMAIL_BODY_KEY, DEFAULT_SIGNUP_EMAIL_BODY, arguments);
+		String senderName = iwrb.getLocalizedString(LOCALIZED_SIGNUP_EAMIL_SENDER_KEY, DEFAULT_SIGNUP_EMAIL_SENDER);
 		String fromAddress = iwc.getApplicationSettings().getProperty(MessagingSettings.PROP_MESSAGEBOX_FROM_ADDRESS,MessagingSettings.DEFAULT_MESSAGEBOX_FROM_ADDRESS);
 		
 		
