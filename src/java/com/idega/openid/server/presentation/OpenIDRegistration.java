@@ -1,5 +1,7 @@
 package com.idega.openid.server.presentation;
 
+import java.io.IOException;
+
 import javax.faces.context.FacesContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,12 +31,8 @@ public class OpenIDRegistration extends IWBaseComponent {
 	
 	@Override
 	public void initializeComponent(FacesContext context) {
+		
 		IWContext iwc = IWContext.getIWContext(context);
-		
-		PresentationUtil.addJavaScriptSourceLineToHeader(iwc, getJQuery().getBundleURIToJQueryLib());
-		
-		PresentationUtil.addJavaScriptSourceLineToHeader(iwc, getBundle(context, getBundleIdentifier()).getVirtualPathWithFileNameString("javascript/signup.js"));
-		PresentationUtil.addStyleSheetToHeader(iwc, getBundle(context, getBundleIdentifier()).getVirtualPathWithFileNameString("style/signup.css"));
 		
 		checkCopyOfFaceletToWebapp(context, "server/signup/request.xhtml");
 		checkCopyOfFaceletToWebapp(context, "server/signup/requested.xhtml");
@@ -46,6 +44,17 @@ public class OpenIDRegistration extends IWBaseComponent {
 		FaceletComponent facelet = (FaceletComponent) iwc.getApplication().createComponent(FaceletComponent.COMPONENT_TYPE);
 		facelet.setFaceletURI(getBundle(context, OpenIDConstants.IW_BUNDLE_IDENTIFIER).getFaceletURI("#{openIDSignUpBean.faceletPath}"));
 		add(facelet);
+	}
+	
+	public void encodeBegin(FacesContext context) throws IOException {
+		super.encodeBegin(context);
+		
+		IWContext iwc = IWContext.getIWContext(context);
+		
+		PresentationUtil.addJavaScriptSourceLineToHeader(iwc, getJQuery().getBundleURIToJQueryLib());
+		
+		PresentationUtil.addJavaScriptSourceLineToHeader(iwc, getBundle(context, getBundleIdentifier()).getVirtualPathWithFileNameString("javascript/signup.js"));
+		PresentationUtil.addStyleSheetToHeader(iwc, getBundle(context, getBundleIdentifier()).getVirtualPathWithFileNameString("style/signup.css"));
 	}
 	
 	protected void checkCopyOfFaceletToWebapp(FacesContext context, String src){
