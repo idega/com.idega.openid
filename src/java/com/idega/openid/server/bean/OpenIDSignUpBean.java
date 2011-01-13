@@ -10,7 +10,6 @@ import java.util.logging.Logger;
 import javax.ejb.CreateException;
 import javax.ejb.FinderException;
 import javax.mail.MessagingException;
-import javax.transaction.UserTransaction;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
@@ -97,6 +96,8 @@ public class OpenIDSignUpBean {
 	public static final String ERREOR_MESSAGE_ID_MESSAGE_NOT_SENT_TO_BANK = "com.idega.openid.server.bean.OpenIDSignUpBean.MESSAGE_NOT_SENT_TO_BANK";
 	public static final String ERROR_CODE_MESSAGE_NOT_SENT_TO_BANK = "message_not_sent_to_bank";
 
+	public static final String ERREOR_MESSAGE_ID_ACTIVATE_LOGIN_FAILED = "com.idega.openid.server.bean.OpenIDSignUpBean.ACTIVATE_LOGIN_FAILED";
+	public static final String ERROR_CODE_ACTIVATE_LOGIN_FAILED = "activate_login_failed";
 	
 	private static final String DEFAULT_SIGNUP_SUBJECT = "Nýskráning á eLykill.is";
 	private static final String LOCALIZED_SIGNUP_EMAIL_SUBJECT_KEY = "openid.signup.email.subject.format";
@@ -404,8 +405,8 @@ public class OpenIDSignUpBean {
 		}
 		
 		
-		//TODO create user and tmp login entry
-		//TODO remove old logins if user is making new request with a different login name
+		//TODO remove old logins if user is making new request with a different login name????
+		//TODO should not be able to choose new login if login has been used, maybe not at all
 		
 		if(user != null){
 			setFullName(user.getName());
@@ -521,6 +522,8 @@ public class OpenIDSignUpBean {
 		return true;
 	}
 	
+	
+	
 	private boolean sendEmail(IWContext iwc, Object[] arguments) {
 		
 		IWResourceBundle iwrb = iwc.getIWMainApplication().getBundle(getBundleIdentifier()).getResourceBundle(iwc);
@@ -536,17 +539,41 @@ public class OpenIDSignUpBean {
 		message.setSenderName(senderName);
 		message.setFromAddress(fromAddress);
 		message.setMailType(MimeTypeUtil.MIME_TYPE_HTML);
-		try {
-			message.send();
-		} catch (MessagingException e) {
-			e.printStackTrace();
-			log.warning("Email could not be sent:" + e.getMessage());
-			setErrorCode(ERROR_CODE_EMAIL_NOT_SENT);
-			setErrorMessage(ERREOR_MESSAGE_ID_EMAIL_NOT_SENT);
-			setState(STATE_ERROR_OCCURRED);
-			return false;
-		}
+		
+		Thread saver = new Thread(new SendEmailWorker(message));
+		saver.start();
+		
+//		try {
+//			message.send();
+//		} catch (MessagingException e) {
+//			e.printStackTrace();
+//			log.warning("Email could not be sent:" + e.getMessage());
+//			setErrorCode(ERROR_CODE_EMAIL_NOT_SENT);
+//			setErrorMessage(ERREOR_MESSAGE_ID_EMAIL_NOT_SENT);
+//			setState(STATE_ERROR_OCCURRED);
+//			return false;
+//		}
 		return true;
+	}
+	
+	private class SendEmailWorker implements Runnable {
+
+		EmailMessage message;
+		
+		public SendEmailWorker(EmailMessage message) {
+			this.message = message;
+		}
+		
+		@Override
+		public void run() {
+			try {
+				message.send();
+			} catch (MessagingException e) {
+				log.severe("Signup email message could not be sent for user \""+getPersonalID()+"\", named "+getFullName()+", email address: "+ getEmail());
+				e.printStackTrace();
+			}
+		}
+		
 	}
 	
 	public void toConfirm(){
@@ -620,7 +647,17 @@ public class OpenIDSignUpBean {
 	public void activate(){
 //		createUser();
 		//TODO Add phone number and other user info
-		//TODO Enable login and set password
+		
+		try {
+			getOpenIDSignupDAO().activateLogin(getLogin(), getPassword());
+		} catch (CreateException e) {
+			e.printStackTrace();
+			setErrorMessage(ERREOR_MESSAGE_ID_ACTIVATE_LOGIN_FAILED);
+			setErrorCode(ERROR_CODE_ACTIVATE_LOGIN_FAILED);
+			setState(STATE_ERROR_OCCURRED);
+			return;
+		}
+		
 		setState(STATE_FINISHED);
 	}	
 	
@@ -668,6 +705,9 @@ public class OpenIDSignUpBean {
 		
 		return usr;
 	}
+	
+
+	
 	
 	public void cancel(){
 		setState(STATE_REQUEST);
