@@ -5,7 +5,7 @@
 		xmlns:f="http://java.sun.com/jsf/core"
 >
 <ui:component>
-	<h:form class="registerNewUser" method="post">
+	<h:form id="activate" class="registerNewUser" method="post">
 		
 		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
 		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.signup']}" /></h2>
@@ -60,34 +60,28 @@
 			<h:inputHidden value="#{openIDSignUpBean.login}" />
 			<br/>
 			<h:outputLabel for="new_passw" value="Lykilorð"/><h:outputText value=":  "/>
-			<h:inputSecret id="new_passw" value="#{openIDSignUpBean.password}" redisplay="false"/>
-			<br/>
+			<input jsfc="h:inputSecret" id="new_passw" value="#{openIDSignUpBean.password}" redisplay="false" type="password"/>
+			<table>
+				<tr>
+					<td>
+						<div id="iSM">
+							<ul class="weak">
+								<li id="iWeak">Veikt</li>
+								<li id="iMedium">Í meðallagi</li>
+								<li id="iStrong">Sterkt</li>
+							</ul>
+						</div>
+					</td>
+				</tr>
+			</table>
 			<h:outputLabel for="new_confirm_passw" value="Lykilorð aftur"/><h:outputText value=":  "/>
-			<h:inputSecret id="new_confirm_passw" value="#{openIDSignUpBean.confirmedPassword}" redisplay="false"/>
+			<h:inputSecret id="new_confirm_passw" value="#{openIDSignUpBean.confirmedPassword}" redisplay="false">
+				<t:validateEqual for="new_passw"
+	                             summaryMessage='#{"Password and confirmd password do not match"}'
+	                             detailMessage='#{"The value of the confirmed password field should equal the value of the password field"}'/>
+			</h:inputSecret>
+			<t:message id="confirmError" for="new_confirm_passw" styleClass="error"/>
 		</p>
-		
-
-		<table>
-			<tr>
-				<td>Password:</td>
-				<td>
-					<input type="password" name="password2"
-						size='30' />
-				</td>
-			</tr>
-			<tr>
-				<td></td>
-				<td>
-					<div id="iSM">
-						<ul class="weak">
-							<li id="iWeak">Weak</li>
-							<li id="iMedium">Medium</li>
-							<li id="iStrong">Strong</li>
-						</ul>
-					</div>
-				</td>
-			</tr>
-		</table>
 
 
 		<div class="buttons">
