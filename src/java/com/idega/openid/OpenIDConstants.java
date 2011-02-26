@@ -14,6 +14,8 @@ public class OpenIDConstants {
 	public static final String PROPERTY_CONSUMER_MANAGER_SOCKET_TIMEOUT = "openid.consumer_manager.socket_timeout";
 	public static final String PROPERTY_CONSUMER_MANAGER_MAX_REDIRECTS = "openid.consumer_manager.max_redirects";
 	public static final String PROPERTY_OPENID_IDENTITY_FORMAT = "openid.identity.format";
+	public static final String PROPERTY_OPENID_AUTO_CREATE_USERS = "openid.auto.create.users";
+	public static final String PROPERTY_OPENID_CLIENT_UPDATE_USER_INFO = "openid.client.update.user.info";
 	
 	public static final String PARAMETER_RETURN = "openid_return";
 	public static final String PARAMETER_IDENTIFIER = "openid_identifier";
@@ -46,5 +48,7 @@ public class OpenIDConstants {
 	public static final String ATTRIBUTE_TYPE_FULL_NAME = "http://schema.openid.net/contact/fullname";
 	public static final String ATTRIBUTE_TYPE_DATE_OF_BIRTH = "http://schema.openid.net/contact/dob";
 	public static final String ATTRIBUTE_TYPE_GENDER = "http://schema.openid.net/contact/gender";
+
+	public static final String LOGIN_TYPE = "openid";
 
 }

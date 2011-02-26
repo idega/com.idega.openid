@@ -53,6 +53,9 @@ public class OpenIDSignUpBean {
 	@Autowired
 	private OpenIDSignupDAO signupDAO;
 	
+	@Autowired
+	private BankMessageBean bankBean;
+	
 	private String fullName;
 	private String personalID;
 	private String email;
@@ -134,6 +137,24 @@ public class OpenIDSignUpBean {
 		"eLykill.is";
 	private static final String LOCALIZED_SIGNUP_BANK_BODY_KEY = "openid.signup.bank.body.format";
 
+
+	private static final String BANK_MESSAGE_XML = "openid.signup.bank.xml.format";
+	private static final String DEFAULT_BANK_MESSAGE_XML = 
+			"\t\t<Field Name=\"Name\">{0}</Field>\n" +
+			"\t\t<Section Name=\"IDEGA\" Occ=\"1\">\n" +
+			"\t\t\t<Field Name=\"Password\">{1}</Field>\n" +
+			"\t\t\t<Field Name=\"Logo\">{2}</Field>\n" +
+			"\t\t\t<Field Name=\"Email\">{3}</Field>\n\t\t</Section>\n";
+
+	private static final String BANK_MESSAGE_AS_EMAIL = "openid.signup.bank.letter.as.email";
+
+	private static final String BANK_TEMPLATE_LOGO = "openid.signup.bank.letter.logo";
+
+	public OpenIDSignUpBean() {
+		super();
+	}
+	
+	
 	public int getState() {
 		return state;
 	}
@@ -168,6 +189,27 @@ public class OpenIDSignUpBean {
 		if(confirmID!=null){
 			this.setState(OpenIDSignUpBean.STATE_CONFIRM);
 			this.setConfirmID(confirmID);
+			
+			//TODO fetch natreg info
+			OpenIdSignupInfo info = null;//getOpenIDSignupDAO().getOpenIdSignupInfo(confirmID);
+			if(info != null){
+				String ssn = info.getPersonalID();
+				setPersonalID(ssn);
+				setEmail(info.getEmail());
+				setLogin(info.getLoginName());
+				if(needToFetchNatregInfo()){
+					boolean fetch = fetchByPersonalID();
+					if(!fetch){
+						setErrorMessage(ERREOR_MESSAGE_ID_NATREG_NO_DATA);
+						setErrorCode(ERROR_CODE_NATREG_NO_DATA);
+						setState(STATE_ERROR_OCCURRED);
+					}
+				}
+			} else {
+//				setErrorMessage(ERREOR_MESSAGE_ID_???);
+//				setErrorCode(ERROR_CODE_???);
+//				setState(STATE_ERROR_OCCURRED);
+			}
 		}
 		
 		faceletPath = "server/signup/";
@@ -348,12 +390,7 @@ public class OpenIDSignUpBean {
 	}
 
 
-	/* Actions begin*/
-//
-//	String TMP_ATTRIBUTE_CONFIRM_ID_MAP = "openid.signup.confirm_id.map";
-//	String TMP_ATTRIBUTE_ID_CODE_MAP = "openid.signup.id_code.map";
-//	String TMP_ATTRIBUTE_META_DATA = "openid.signup.meta.data";
-	
+	/* Actions begin*/	
 	
 	public void request(){
 		IWContext iwc = IWContext.getCurrentInstance();
@@ -363,34 +400,6 @@ public class OpenIDSignUpBean {
 		setConfirmID(cID);
 		String idCode = StringHandler.getRandomStringNonAmbiguous(8);
 		setIdentificationCode(idCode);
-		
-//			
-//		Map<String,String> confirmMap = (Map<String, String>) iwc.getSessionAttribute(TMP_ATTRIBUTE_CONFIRM_ID_MAP);
-//		if(confirmMap == null){
-//			confirmMap = new HashMap<String, String> ();
-//			iwc.setSessionAttribute(TMP_ATTRIBUTE_CONFIRM_ID_MAP, confirmMap);
-//		}
-//		confirmMap.put(cID, getPersonalID());
-//		
-//		Map<String,String> idCodeMap = (Map<String, String>) iwc.getSessionAttribute(TMP_ATTRIBUTE_ID_CODE_MAP);
-//		if(idCodeMap == null){
-//			idCodeMap = new HashMap<String, String> ();
-//			iwc.setSessionAttribute(TMP_ATTRIBUTE_ID_CODE_MAP, idCodeMap);
-//		}
-//		idCodeMap.put(cID, idCode);
-//		
-//		
-//		HashMap<String, String[]> emailMap = (HashMap<String, String[]>) iwc.getSessionAttribute(TMP_ATTRIBUTE_META_DATA);
-//		if(emailMap == null){
-//			emailMap = new HashMap<String, String[]> ();
-//			iwc.setSessionAttribute(TMP_ATTRIBUTE_META_DATA, emailMap);
-//		}
-//		String[] metaData = new String[2];
-//		metaData[0]=getEmail();
-//		metaData[1]=getLogin();
-//		emailMap.put(cID, metaData);
-		
-
 		
 		getOpenIDSignupDAO().createOpenIDSignupInfo(cID, idCode,getPersonalID(),getEmail(),getLogin());
 		
@@ -464,12 +473,18 @@ public class OpenIDSignUpBean {
 			return;
 		}
 		
-		Object[] bankArguments = new String[3];
-		bankArguments[0] = usrName;
-		bankArguments[1] = getEmail();
-		bankArguments[2] = getIdentificationCode();
 		
-		success = sendLetterToBank(iwc, bankArguments);
+			
+
+		String logo = iwc.getApplicationSettings().getProperty(BANK_TEMPLATE_LOGO, "");
+		
+		Object[] bankArguments = new String[4];
+		bankArguments[0] = getFullName(); //Full name
+		bankArguments[1] = getIdentificationCode(); //Password
+		bankArguments[2] = logo; //Logo
+		bankArguments[3] = getEmail(); //Email
+		
+		success = sendLetterToBank(iwc, user, bankArguments);
 		if(!success){
 			//Error occurred
 			return;
@@ -479,8 +494,29 @@ public class OpenIDSignUpBean {
 	}
 
 
-	private boolean sendLetterToBank(IWContext iwc, Object[] arguments) {
+	private boolean sendLetterToBank(IWContext iwc, User user, Object[] arguments) {
+		boolean sendBankLetterAsEmail = iwc.getApplicationSettings().getBoolean(BANK_MESSAGE_AS_EMAIL, true);;
+		if(sendBankLetterAsEmail){ //debug
+			return tmpBankMessage(iwc, arguments);
+		}
 		
+		String customXmlPart = iwc.getApplicationSettings().getProperty(BANK_MESSAGE_XML, DEFAULT_BANK_MESSAGE_XML);
+		
+		try {
+			getBankMessageBean().sendMessageToBank(user, customXmlPart, arguments);
+		} catch (Exception e) {
+			e.printStackTrace();
+			log.warning("Message could not be sent to bank:" + e.getMessage());
+			setErrorCode(ERROR_CODE_MESSAGE_NOT_SENT_TO_BANK);
+			setErrorMessage(ERREOR_MESSAGE_ID_MESSAGE_NOT_SENT_TO_BANK);
+			setState(STATE_ERROR_OCCURRED);
+			return false;
+		}
+		
+		return true;
+	}
+
+	private boolean tmpBankMessage(IWContext iwc, Object[] arguments) {
 		IWResourceBundle iwrb = iwc.getIWMainApplication().getBundle(getBundleIdentifier()).getResourceBundle(iwc);
 		
 		String subject = iwrb.getLocalizedAndFormattedString(LOCALIZED_SIGNUP_BANK_SUBJECT_KEY, DEFAULT_SIGNUP_BANK_SUBJECT, arguments);
@@ -505,20 +541,6 @@ public class OpenIDSignUpBean {
 			return false;
 		}
 		//TMP ends
-
-		
-		
-//		try {
-//			//TODO send to bank
-//		} catch ( e) {
-//			e.printStackTrace();
-//			log.warning("Message could not be sent to bank:" + e.getMessage());
-//			setErrorCode(ERROR_CODE_MESSAGE_NOT_SENT_TO_BANK);
-//			setErrorMessage(ERREOR_MESSAGE_ID_MESSAGE_NOT_SENT_TO_BANK);
-//			setState(STATE_ERROR_OCCURRED);
-//			return false;
-//		}
-		
 		return true;
 	}
 	
@@ -589,44 +611,22 @@ public class OpenIDSignUpBean {
 			setPersonalID(ssn);
 			setEmail(info.getEmail());
 			setLogin(info.getLoginName());
-			boolean fetch = fetchByPersonalID();
-			if(!fetch){
-				setErrorMessage(ERREOR_MESSAGE_ID_NATREG_NO_DATA);
-				setErrorCode(ERROR_CODE_NATREG_NO_DATA);
-				setState(STATE_ERROR_OCCURRED);
-				return;
-			}			
+			if(needToFetchNatregInfo()){
+				boolean fetch = fetchByPersonalID();
+				if(!fetch){
+					setErrorMessage(ERREOR_MESSAGE_ID_NATREG_NO_DATA);
+					setErrorCode(ERROR_CODE_NATREG_NO_DATA);
+					setState(STATE_ERROR_OCCURRED);
+					return;
+				}
+			}
 			setState(STATE_SIGNUP);
+			
+			activate();
+			
 			return;
 		}
-		
-		
-//		IWContext iwc = IWContext.getCurrentInstance();
-//		
-//		Map<String,String> confirmMap = (Map<String, String>) iwc.getSessionAttribute(TMP_ATTRIBUTE_CONFIRM_ID_MAP);
-//		Map<String,String> idCodeMap = (Map<String, String>) iwc.getSessionAttribute(TMP_ATTRIBUTE_ID_CODE_MAP);
-//		Map<String,String[]> emailMap = (Map<String, String[]>) iwc.getSessionAttribute(TMP_ATTRIBUTE_META_DATA);
-//		if(confirmMap != null && idCodeMap != null){
-//			String idCode = idCodeMap.get(getConfirmID());
-//			if(idCode != null && idCode.equals(getIdentificationCode())){
-//				String ssn = confirmMap.get(getConfirmID());
-//				setPersonalID(ssn);
-//				boolean fetch = fetchByPersonalID();
-//				if(fetch){
-//					setErrorMessage(MESSAGE_ID_NATREG_NO_DATA);
-//					setErrorCode(ERROR_CODE_NATREG_NO_DATA);
-//					setState(STATE_ERROR_OCCURRED);
-//				}
-//				
-//				String[] e = emailMap.get(getConfirmID());
-//				setEmail(e[0]);
-//				setLogin(e[1]);
-//				
-//				setState(STATE_SIGNUP);
-//				return;
-//			}
-//		}
-		setState(STATE_REQUEST);
+		setState(STATE_CONFIRM);
 	}
 	
 	private boolean fetchByPersonalID(){
@@ -642,6 +642,10 @@ public class OpenIDSignUpBean {
 			}
 		}
 		return false;
+	}
+	
+	private boolean needToFetchNatregInfo(){
+		return getFullName() == null;
 	}
 	
 	public void activate(){
@@ -674,7 +678,7 @@ public class OpenIDSignUpBean {
 		String login = getLogin();
 		String password = "disabledAccount";  //Password cannot be null or empty string
 		Boolean accountEnabled = Boolean.FALSE;
-		int daysOfValidity = 30;
+		int daysOfValidity = 10000;
 		Boolean passwordExpires = Boolean.FALSE;
 		Boolean userAllowedToChangePassw = Boolean.TRUE;
 		Boolean changeNextTime = Boolean.FALSE;
@@ -737,6 +741,13 @@ public class OpenIDSignUpBean {
 			ELUtil.getInstance().autowire(this);
 		}
 		return signupDAO;
+	}
+	
+	private BankMessageBean getBankMessageBean() {
+		if (bankBean == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		return bankBean;
 	}
 	
 }

@@ -24,6 +24,7 @@ public class OpenIDRegistration extends IWBaseComponent {
 	@Autowired
 	private OpenIDSignUpBean signupBean;
 	
+	protected String faceletUriBinding = "#{openIDSignUpBean.faceletPath}";
 	
 	public String getBundleIdentifier() {
 		return OpenIDConstants.IW_BUNDLE_IDENTIFIER;
@@ -34,6 +35,7 @@ public class OpenIDRegistration extends IWBaseComponent {
 		
 		IWContext iwc = IWContext.getIWContext(context);
 		
+		checkCopyOfFaceletToWebapp(context, "server/signup/common/parameters.xhtml");
 		checkCopyOfFaceletToWebapp(context, "server/signup/request.xhtml");
 		checkCopyOfFaceletToWebapp(context, "server/signup/requested.xhtml");
 		checkCopyOfFaceletToWebapp(context, "server/signup/confirm.xhtml");
@@ -42,7 +44,7 @@ public class OpenIDRegistration extends IWBaseComponent {
 		checkCopyOfFaceletToWebapp(context, "server/signup/error.xhtml");
 		
 		FaceletComponent facelet = (FaceletComponent) iwc.getApplication().createComponent(FaceletComponent.COMPONENT_TYPE);
-		facelet.setFaceletURI(getBundle(context, OpenIDConstants.IW_BUNDLE_IDENTIFIER).getFaceletURI("#{openIDSignUpBean.faceletPath}"));
+		facelet.setFaceletURI(getBundle(context, OpenIDConstants.IW_BUNDLE_IDENTIFIER).getFaceletURI(faceletUriBinding));
 		add(facelet);
 	}
 	

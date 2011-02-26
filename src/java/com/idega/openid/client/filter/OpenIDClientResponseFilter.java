@@ -1,12 +1,15 @@
 package com.idega.openid.client.filter;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
+import javax.ejb.CreateException;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.LoginException;
 import javax.security.auth.spi.LoginModule;
@@ -38,8 +41,10 @@ import org.openid4java.message.sreg.SRegResponse;
 
 import com.idega.business.IBOLookup;
 import com.idega.business.IBOLookupException;
+import com.idega.business.IBORuntimeException;
 import com.idega.core.accesscontrol.business.AuthenticationBusiness;
 import com.idega.core.accesscontrol.business.LoginBusinessBean;
+import com.idega.core.accesscontrol.business.LoginDBHandler;
 import com.idega.core.accesscontrol.business.LoginState;
 import com.idega.core.accesscontrol.business.ServletFilterChainInterruptException;
 import com.idega.core.accesscontrol.jaas.IWCallbackHandler;
@@ -51,9 +56,18 @@ import com.idega.presentation.IWContext;
 import com.idega.repository.data.ImplementorRepository;
 import com.idega.servlet.filter.BaseFilter;
 import com.idega.servlet.filter.IWAuthenticator;
+import com.idega.user.business.UserBusiness;
+import com.idega.user.data.GroupBMPBean;
 import com.idega.user.data.User;
+import com.idega.util.IWTimestamp;
+import com.idega.util.RequestUtil;
+import com.idega.util.StringHandler;
+import com.idega.util.text.Name;
+import com.idega.util.text.SocialSecurityNumber;
 
 public class OpenIDClientResponseFilter extends BaseFilter {
+	
+	private static Logger LOGGER = Logger.getLogger(OpenIDClientResponseFilter.class.getName());
 
 	private ConsumerManager manager;
 
@@ -70,7 +84,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		
 		String isReturn = request.getParameter(OpenIDConstants.PARAMETER_RETURN);
 		if (isReturn != null) {
-			LoginBusinessBean bean = new LoginBusinessBean();
+			LoginBusinessBean bean = LoginBusinessBean.getLoginBusinessBean(request);
 
 			if (isReturn.equals(Boolean.TRUE.toString())) {
 				Identifier identifier = verifyResponse(request);
@@ -79,13 +93,58 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				}
 				else {
 					String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID);
+					String login = getLoginName(identifier);
+					String loginType = OpenIDConstants.LOGIN_TYPE;
 					
 					try {
-						loginFailed = !bean.logInByPersonalID(request, personalID);
+						loginFailed = !bean.logInByPersonalID(request, personalID, login, null, loginType);
 					}
 					catch (Exception e) {
 						e.printStackTrace();
 						loginFailed = true;
+					}
+					
+					boolean updateUserInfo = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getBoolean(OpenIDConstants.PROPERTY_OPENID_CLIENT_UPDATE_USER_INFO, true);
+					
+					if(loginFailed){ 
+						//try again if autoCreateUser is true
+						boolean autoCreateUser = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getBoolean(OpenIDConstants.PROPERTY_OPENID_AUTO_CREATE_USERS, true);
+						if(autoCreateUser){
+							IWApplicationContext iwac = IWMainApplication.getIWApplicationContext(request);
+							UserBusiness usrBusiness = getUserBusiness(iwac);
+							User usr = null;
+							try {
+								usr = usrBusiness.getUser(personalID);
+								if(usr != null){
+									//user exists, try to create login
+									autoCreateLoginForAuthenticatedUser(usr, login, iwac, request);
+								}
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
+							if(usr == null){
+								//Create user since not existing, and then login
+								try{
+									usr = autoCreateAuthenticatedUser(iwac, request);
+									autoCreateLoginForAuthenticatedUser(usr, login, iwac,request);
+								} catch (Exception ex){
+									ex.printStackTrace();
+									loginFailed = true;
+								}
+							}
+							
+							if(usr != null){ //try logging in again
+								if(usr.getPersonalID().equals(personalID)){ //extra check
+									try {
+										loginFailed = !bean.logInByPersonalID(request, personalID, login, null, loginType);
+									} catch (Exception e1) {
+										e1.printStackTrace();
+									}
+								}
+							}
+						}
+					} else if(updateUserInfo){
+						//TODO Check if user info has changed and if so then update
 					}
 				}
 			}
@@ -112,6 +171,100 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		}
 	}
 	
+	private String getLoginName(Identifier identifier) {
+		String login = identifier.getIdentifier();
+		if(login != null && login.contains("/")){
+			int fromIndex = 0;
+			if(login.startsWith("http://")){
+				fromIndex = 7;
+			} else if (login.startsWith("https://")){
+				fromIndex = 8;
+			}
+			int toIndex = login.indexOf("/", fromIndex);
+			if(toIndex < 0){
+				toIndex = login.length();
+			}
+			if(toIndex > 31){
+				LOGGER.warning("Openid identifier \""+login.substring(fromIndex,toIndex)+"\" is too long to fit login name column.  Cutting string after index 31.");
+				toIndex = 31;
+			}
+			login = login.substring(fromIndex,toIndex);
+		}
+		return login;
+	}
+
+	private void autoCreateLoginForAuthenticatedUser(User usr, String login, IWApplicationContext iwac, HttpServletRequest request) throws Exception {
+		//Password cannot be null or empty string
+		String password = StringHandler.getRandomString(16);
+		
+		Boolean accountEnabled = Boolean.TRUE;
+		int daysOfValidity = 10000;
+		Boolean passwordExpires = Boolean.FALSE;
+		Boolean userAllowedToChangePassw = Boolean.TRUE;
+		Boolean changeNextTime = Boolean.FALSE;
+		String encryptionType = null;
+		String loginType = OpenIDConstants.LOGIN_TYPE;
+		IWTimestamp modified = IWTimestamp.RightNow();
+
+		LoginDBHandler.createLogin(usr, login, password, accountEnabled, modified, daysOfValidity, passwordExpires, userAllowedToChangePassw, changeNextTime, encryptionType, loginType);
+		
+	}
+
+	private User autoCreateAuthenticatedUser(IWApplicationContext iwac, HttpServletRequest request) throws RemoteException, CreateException {
+		String email = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_EMAIL);
+		String fullName = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_FULL_NAME);
+		String dob = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_DATE_OF_BIRTH);
+		String gender = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_GENDER);
+		String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID);
+
+		
+		IWContext iwc = IWContext.getCurrentInstance();
+		String ssn = personalID;
+		IWTimestamp dateOfBirth = ssn != null ? new IWTimestamp(SocialSecurityNumber.getDateFromSocialSecurityNumber(ssn)) : null;
+		
+		Name name = new Name(fullName);
+		String displayName = fullName;
+		String description = null;
+		
+		Integer primaryGroup =  new Integer(GroupBMPBean.GROUP_ID_USERS);
+		Integer genderID = null;
+
+		User usr = getUserBusiness(iwc).createUser(
+				name.getFirstName(), 
+				name.getMiddleName(), 
+				name.getLastName(), 
+				displayName, 
+				ssn, 
+				description, 
+				genderID, 
+				dateOfBirth, 
+				primaryGroup, 
+				fullName);
+		
+//		User usr = getUserBusiness(iwc).createUserWithLogin(
+//				name.getFirstName(), 
+//				name.getMiddleName(), 
+//				name.getLastName(), 
+//				ssn, 
+//				displayName, 
+//				description, 
+//				genderInt, 
+//				dateOfBirth, 
+//				null, 
+//				login, 
+//				password, 
+//				accountEnabled, 
+//				IWTimestamp.RightNow(), 
+//				daysOfValidity, 
+//				passwordExpires, 
+//				userAllowedToChangePassw, 
+//				changeNextTime, 
+//				encryptionType, 
+//				fullName);
+		
+		return usr;
+	}
+
 	protected boolean processAuthenticationListeners(HttpServletRequest request, HttpServletResponse response, HttpSession session, LoginBusinessBean loginBusiness) throws RemoteException {
 		try {
 			AuthenticationBusiness authenticationBusiness = getAuthenticationBusiness(request);
@@ -297,6 +450,15 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		}
 		catch (ConsumerException e) {
 			throw new ServletException(e);
+		}
+	}
+	
+	private UserBusiness getUserBusiness(IWApplicationContext iwac) {
+		try {
+			return (UserBusiness) IBOLookup.getServiceInstance(iwac, UserBusiness.class);
+		}
+		catch (IBOLookupException ile) {
+			throw new IBORuntimeException(ile);
 		}
 	}
 	

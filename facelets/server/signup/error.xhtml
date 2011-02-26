@@ -10,6 +10,8 @@
 		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
 		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.error']}" /></h2>
 		
+		<ui:include src="common/parameters.xhtml"/>
+		
 		<p>Eftirfarandi villa kom upp við skráningu:</p>
 		<p><h:outputText value="#{openIDSignUpBean.errorMessage}" /></p>
 		

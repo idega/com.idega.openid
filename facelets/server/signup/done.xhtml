@@ -10,8 +10,18 @@
 		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
 		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.done']}" /></h2>
 		
+		<ui:include src="common/parameters.xhtml"/>
+		
 		<p>Til hamingju! Þú hefur nú tryggt þér auðkennið "#{openIDSignUpBean.login}" á eLykill.is 
 		   og OpenID auðkennisslóðina <a href="http://#{openIDSignUpBean.login}.elykill.is">http://#{openIDSignUpBean.login}.elykill.is</a></p>
+		
+		
+		<p>Við innskráningu á vefsíður er slegið inn:
+            <ol>
+                <li>Notandanafn: <a href="http://#{openIDSignUpBean.login}.elykill.is">http://#{openIDSignUpBean.login}.elykill.is</a></li>  
+                <li>Síðan er beðið um lykilorðið sem þú valdir við staðfestingu umsóknar.</li>
+            </ol>
+		</p>
 		
 		<div class="buttons">
 			<h:commandLink action="#{openIDSignUpBean.cancel}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.done']}" /></h:commandLink>

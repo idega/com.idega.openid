@@ -5,23 +5,50 @@
 		xmlns:f="http://java.sun.com/jsf/core"
 >
 <ui:component>
-	<h:form class="registerNewUser" method="post">
+	<h:form id="activate" class="registerNewUser" method="post">
 		
 		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
 		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.confirm']}" /></h2>
 		
 		<p>Vinsamlegast skráið inn auðkenningarkóða til að halda áfram nýskráningu.</p>
 		
+		<ui:include src="common/parameters.xhtml"/>
+		
 		<ui:remove><p>
 			<h:outputLabel for="ssn" value="Kennitala"/><h:outputText value=":  "/>
 			<h:inputText id="ssn" value="#{openIDSignUpBean.personalID}" readonly="false" />
 		</p></ui:remove>
 		<p>
-			<h:outputLabel for="code" value="Auðkenningarkóði"/><h:outputText value=":  "/>
+			<h:outputLabel for="code" value="Virkjunarkóði"/><h:outputText value=":  "/>
 			<h:inputText id="code" value="#{openIDSignUpBean.identificationCode}" readonly="false" />
 			<br/>
 		</p>
 		<h:inputHidden value="#{openIDSignUpBean.confirmID}" />
+		
+		<p>
+			<h:outputLabel for="new_passw" value="Nýtt lykilorð"/><h:outputText value=":  "/>
+			<input jsfc="h:inputSecret" id="new_passw" value="#{openIDSignUpBean.password}" redisplay="false" type="password"/>
+			<table>
+				<tr>
+					<td>
+						<div id="iSM">
+							<ul class="weak">
+								<li id="iWeak">Veikt</li>
+								<li id="iMedium">Í meðallagi</li>
+								<li id="iStrong">Sterkt</li>
+							</ul>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<h:outputLabel for="new_confirm_passw" value="Nýtt lykilorð aftur"/><h:outputText value=":  "/>
+			<h:inputSecret id="new_confirm_passw" value="#{openIDSignUpBean.confirmedPassword}" redisplay="false">
+				<t:validateEqual for="new_passw"
+	                             summaryMessage='#{"Password and confirmd password do not match"}'
+	                             detailMessage='#{"The value of the confirmed password field should equal the value of the password field"}'/>
+			</h:inputSecret>
+			<t:message id="confirmError" for="new_confirm_passw" styleClass="error"/>
+		</p>
 	
 		<p class="buttons">
 			<h:commandLink action="#{openIDSignUpBean.confirm}"><h:outputText value="#{localizedStrings['com.idega.openid']['signup.conform']}" /></h:commandLink> 

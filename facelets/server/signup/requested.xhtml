@@ -10,6 +10,9 @@
 		<h1><h:outputText value="#{localizedStrings['com.idega.openid']['signup.heading']}" /></h1>
 		<h2><h:outputText value="#{localizedStrings['com.idega.openid']['signup.state.requested']}" /></h2>
 		
+		
+		<ui:include src="common/parameters.xhtml"/>
+		
 		<p>
 			Innan skamms mun þér að berast tölvupóstur á netfangið #{openIDSignUpBean.email} með leiðbeiningum
 			um næstu skref.
