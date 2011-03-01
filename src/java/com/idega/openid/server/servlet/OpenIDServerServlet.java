@@ -65,35 +65,36 @@ public class OpenIDServerServlet extends HttpServlet {
 	
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		doPost(req, resp);
+		processRequest(req, resp, false);
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		processRequest(req, resp, true);
+	}
+
+	
+	@SuppressWarnings("unchecked")
+	protected void processRequest(HttpServletRequest req, HttpServletResponse resp, boolean isPost) throws ServletException, IOException {
 		ServerManager manager = getServerManager();
 
 		// extract the parameters from the request
-        ParameterList request = new ParameterList(req.getParameterMap());
+        ParameterList requestParameters = new ParameterList(req.getParameterMap());
         
         OpenIDServerBean serverBean = ELUtil.getInstance().getBean("openIDServerBean");
-        Map parameterMap = serverBean.getParameterMap();
-        if (request.getParameters().size() == 0 && parameterMap != null) {
-        	request = new ParameterList(parameterMap);
+        ParameterList sessionStoredParameterList = serverBean.getParameterList();
+        if(sessionStoredParameterList != null){
+	        if (!requestParameters.hasParameter(OpenIDConstants.PARAMETER_OPENID_MODE)) {
+	        	sessionStoredParameterList.addParams(requestParameters);
+	        	requestParameters = sessionStoredParameterList;
+	        }
         }
 
-        String mode = request.hasParameter(OpenIDConstants.PARAMETER_OPENID_MODE) ? request.getParameterValue(OpenIDConstants.PARAMETER_OPENID_MODE) : null;
-        String realm = request.hasParameter(OpenIDConstants.PARAMETER_REALM) ? request.getParameterValue(OpenIDConstants.PARAMETER_REALM) : null;
+        String mode = requestParameters.hasParameter(OpenIDConstants.PARAMETER_OPENID_MODE) ? requestParameters.getParameterValue(OpenIDConstants.PARAMETER_OPENID_MODE) : null;
+        String realm = requestParameters.hasParameter(OpenIDConstants.PARAMETER_REALM) ? requestParameters.getParameterValue(OpenIDConstants.PARAMETER_REALM) : null;
         if (realm != null) {
         	serverBean.setReturnUrl(realm);
-			if (realm.indexOf("http://") != -1) {
-				realm = TextSoap.findAndCut(realm, "http://");
-			} else if (realm.indexOf("https://") != -1) {
-				realm = TextSoap.findAndCut(realm, "https://");
-			}
-			if (realm.indexOf("/") != -1) {
-				realm = realm.substring(0, realm.indexOf("/"));
-			}
+			realm = getRealmName(realm);
 			serverBean.setRealm(realm);
         }
         
@@ -103,39 +104,16 @@ public class OpenIDServerServlet extends HttpServlet {
         try {
 	        if (OpenIDConstants.PARAMETER_ASSOCIATE.equals(mode)) {
 	            // --- process an association request ---
-	            response = manager.associationResponse(request);
+	            response = manager.associationResponse(requestParameters);
 	            responseText = response.keyValueFormEncoding();
 	        }
 	        else if (OpenIDConstants.PARAMETER_CHECKID_SETUP.equals(mode) || OpenIDConstants.PARAMETER_CHECKID_IMMEDIATE.equals(mode)) {
 	        	IWContext iwc = new IWContext(req, resp, getServletContext());
 	        	
-	        	boolean goToLogin = true;
-	        	//Log user out if this is an authentication request for a new association 
-	        	//(i.e. another Relying Party or an expired association) or if this is a new request
-	        	//after a completed successful one (loginExpireTime is removed on successful login)
-	        	String loginExpireHandle = request.hasParameter(OpenIDConstants.PARAMETER_ASSOCIATE_HANDLE) ? "login-"+request.getParameterValue(OpenIDConstants.PARAMETER_ASSOCIATE_HANDLE) : null;
-	        	if(loginExpireHandle==null){
-	        		throw new UnsupportedOperationException("Missing openid.assoc_handle");
-	        	}
-	        	Date loginExpirationTime = (Date)iwc.getSessionAttribute(loginExpireHandle);
-	        	
-	        	Date currentTime = new Date();
-	        	if(loginExpirationTime == null || currentTime.after(loginExpirationTime)){
-	        		if(iwc.isLoggedOn()){
-	        			//Make user log in again
-	        			LoginBusinessBean loginBusiness = getLoginBusiness(iwc.getRequest());
-	        			loginBusiness.logOutUser(iwc);
-	        		}
-	        		int expireInMilliSeconds = manager.getExpireIn()*1000;
-	        		iwc.setSessionAttribute(loginExpireHandle, new Date(currentTime.getTime()+expireInMilliSeconds));
-	        		goToLogin = true;
-	        	} else {
-	        		//coming here again in the same request/association
-	        		goToLogin = !iwc.isLoggedOn();
-	        	}
+	        	boolean goToLogin = doRedirectToLoginPage(manager, requestParameters, iwc, realm);
 	        	
 	        	if (!goToLogin) {
-	        		serverBean.setParameterMap(null);
+	        		serverBean.setParameterList(null);
 	        		serverBean.setServerUrl(null);
 	        		serverBean.setDoRedirect(null);
 	        		serverBean.setUsername(null);
@@ -145,7 +123,7 @@ public class OpenIDServerServlet extends HttpServlet {
 		            String userSelectedClaimedId = getUserSelectedClaimedId(iwc, user);
 		            
 		            // --- process an authentication request ---
-		            AuthRequest authReq = AuthRequest.createAuthRequest(request, manager.getRealmVerifier());
+		            AuthRequest authReq = AuthRequest.createAuthRequest(requestParameters, manager.getRealmVerifier());
 		
 		            storeRequestedAttributesToSession(iwc, authReq);
 		            
@@ -157,7 +135,7 @@ public class OpenIDServerServlet extends HttpServlet {
 		                opLocalId = userSelectedClaimedId;
 		            }
 		
-		            response = manager.authResponse(request,
+		            response = manager.authResponse(requestParameters,
 		                    opLocalId,
 		                    userSelectedClaimedId,
 		                    authenticatedAndApproved.booleanValue(),
@@ -165,84 +143,15 @@ public class OpenIDServerServlet extends HttpServlet {
 		
 		            if (response instanceof DirectError) {
 		            	directResponse(resp, response.keyValueFormEncoding());
+		            	return;
 		            }
 		            else if (response instanceof AuthFailure) {
-		            	serverBean.setParameterMap(req.getParameterMap());
-		        		
-		        		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI() + "?" + req.getQueryString();
-		        		serverBean.setServerUrl(URL);
-
-		        		String authenticateURL = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_AUTHENTICATION_URL, "http://www.elykill.is/pages/profile/mypage/authenticate/");
-		        		
-		        		
-		        		
-//		        		OpenIDAttributesBean attr = ELUtil.getInstance().getBean("openIDAttributesBean");
-//			            List userData = userInteraction(iwc, user);
-//		        		attr.setEmail((String) userData.get(0));
-//			            attr.setPersonalID((String) userData.get(1));
-//			            attr.setFullName((String) userData.get(2));
-//			            attr.setDateOfBirth((String) userData.get(3));
-//			            attr.setGender((String) userData.get(4));
-		        		
-		        		resp.sendRedirect(authenticateURL);
+		            	redirectToAuthorisationPage(req, resp, requestParameters, serverBean);
 		        		return;
 		            }
 		            else {
 		            	StringBuffer attributesLog = new StringBuffer();
-		                if (authReq.hasExtension(AxMessage.OPENID_NS_AX)) {
-		                    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
-		                    if (ext instanceof FetchRequest) {
-		                        FetchRequest fetchReq = (FetchRequest) ext;
-		                        Map<String,String> requestedAttributes = fetchReq.getAttributes();
-		                        Map userDataExt = new HashMap();
-		                		
-	                            FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
-	                            
-//		                        for(String alias : requestedAttributes.keySet()){
-//		                        	String attrType = requestedAttributes.get(alias);
-//		                        	if(serverBean.getIncludeAttributeInResponce(alias,attrType)){
-//			                        	String value = getAttributeValue(iwc,user,alias,attrType);
-//			                        	if(value==null){
-//			                        		value="";
-//			                        	}
-//			                        	fetchResp.addAttribute(alias, attrType, value);
-//			                        	//write log entry
-//			                        	attributesLog.append('[').append(alias).append(';').append(attrType)
-//			                        	//.append(';').append(value)
-//			                        	.append("],");
-//		                        	} 
-//		                        }
-//		                        //If FetchRequest is now, for any reason, asking for more 
-	                            //attributes than have been processed it will not be returned
-	                            //Only known attributes should have been processed
-		                        List<AuthorizedAttribute> s = serverBean.getRequestedAttributes();
-		                        Set<String> keys = requestedAttributes.keySet();
-		                        for(AuthorizedAttribute a : s){
-		                        	ExchangeAttribute attr = a.getExchangeAttribute();
-		                        	String alias = attr.getName();
-		                        	String type = attr.getType();
-		                        	if(keys.contains(alias) && type.equals(requestedAttributes.get(alias))){
-		                        		String value = getAttributeValue(iwc,user,alias,type);
-			                        	if(value==null){
-			                        		value="";
-			                        	}
-			                        	fetchResp.addAttribute(alias, type, value);
-			                        	//write log entry
-			                        	attributesLog.append('[').append(alias).append(';').append(type)
-			                        	//.append(';').append(value)
-			                        	.append("],");
-		                        	} else {
-		                        		//FetchRequest not asking for this attribute
-		                        		throw new UnsupportedOperationException("Processed and requested attributes do not match.");
-		                        	}
-		                        }
-		                        
-		                        response.addExtension(fetchResp);
-		                    }
-		                    else /*if (ext instanceof StoreRequest)*/ {
-		                        throw new UnsupportedOperationException("TODO");
-		                    }
-		                }
+		            	prepareResponse(serverBean, response, iwc, user, authReq, attributesLog);
 		
 		                // Sign the auth success message.
 		                // This is required as AuthSuccess.buildSignedList has a `todo' tag now.
@@ -266,71 +175,189 @@ public class OpenIDServerServlet extends HttpServlet {
 		                //httpReq.setAttribute("destinationUrl", response.getDestinationUrl(false));
 		                //dispatcher.forward(request, response);
 		                //return null;
+//		                responseText = response.wwwFormEncoding();  //????? http://code.sxip.com/openid4java/apidoc/org/openid4java/server/package-summary.html
 		            }
 	        	}
 	        	else {
-	        		
-	        		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI() + "?" + req.getQueryString();
-	        		String subdomain = new OpenIDUtil().getSubDomain(request.getParameterValue("openid.claimed_id"));
-	        		
-	        		serverBean.setParameterMap(req.getParameterMap());
-	        		serverBean.setServerUrl(URL);
-	        		serverBean.setDoRedirect(Boolean.TRUE);
-	        		serverBean.setUsername(subdomain);
-
-	        		resp.sendRedirect(manager.getUserSetupUrl());
+	        		redirectToLoginPage(req, resp, requestParameters, serverBean, manager);
 	        		return;
 	        	}
 	        }
 	        else if (OpenIDConstants.PARAMETER_CHECK_AUTHENTICATION.equals(mode)) {
 	            // --- processing a verification request ---
-	            response = manager.verify(request);
+	            response = manager.verify(requestParameters);
 	            responseText = response.keyValueFormEncoding();
 	        }
 	        else {
 	            // --- error response ---
 	            response = DirectError.createDirectError("Unknown request");
 	            responseText = response.keyValueFormEncoding();
+	            serverBean.invalidate();
 	        }
         }
         catch (MessageException me) {
         	me.printStackTrace();
         	responseText = me.getMessage();
+        	serverBean.invalidate();
         }
         catch (AssociationException ae) {
         	ae.printStackTrace();
         	responseText = ae.getMessage();
+        	serverBean.invalidate();
         }
         catch (ServerException se) {
 			se.printStackTrace();
         	responseText = se.getMessage();
+        	serverBean.invalidate();
 		}
         
         // return the result to the user
         directResponse(resp, responseText);
     }
 
+	protected StringBuffer prepareResponse(OpenIDServerBean serverBean, Message response, IWContext iwc, User user, AuthRequest authReq, StringBuffer attributesLog) throws MessageException {
+		if (authReq.hasExtension(AxMessage.OPENID_NS_AX)) {
+		    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
+		    if (ext instanceof FetchRequest) {
+		        FetchRequest fetchReq = (FetchRequest) ext;
+		        Map<String,String> requestedAttributes = fetchReq.getAttributes();
+		        Map userDataExt = new HashMap();
+				
+		        FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
+		        List<AuthorizedAttribute> s = serverBean.getRequestedAttributes();
+		        Set<String> keys = requestedAttributes.keySet();
+		        for(AuthorizedAttribute a : s){
+		        	ExchangeAttribute attr = a.getExchangeAttribute();
+		        	String alias = attr.getName();
+		        	String type = attr.getType();
+		        	if(keys.contains(alias) && type.equals(requestedAttributes.get(alias))){
+		        		String value = getAttributeValue(iwc,user,alias,type);
+		            	if(value==null){
+		            		value="";
+		            	}
+		            	fetchResp.addAttribute(alias, type, value);
+		            	//write log entry
+		            	attributesLog.append('[').append(alias).append(';').append(type)
+		            	//.append(';').append(value)
+		            	.append("],");
+		        	} else {
+		        		//FetchRequest not asking for this attribute
+		        		throw new UnsupportedOperationException("Processed and requested attributes do not match.");
+		        	}
+		        }
+		        
+		        response.addExtension(fetchResp);
+		    }
+		    else /*if (ext instanceof StoreRequest)*/ {
+		        throw new UnsupportedOperationException("TODO");
+		    }
+		}
+		return attributesLog;
+	}
+
+	protected void redirectToLoginPage(HttpServletRequest req, HttpServletResponse resp, ParameterList requestParameters, OpenIDServerBean serverBean, ServerManager manager) throws IOException {
+		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI();
+		
+		String queryString = req.getQueryString();
+		if(queryString != null){
+			URL += "?" + queryString;
+		}
+		
+		serverBean.setServerUrl(URL);
+		serverBean.setParameterList(requestParameters);
+		
+		serverBean.setDoRedirect(Boolean.TRUE);
+		
+		String identity = requestParameters.getParameterValue("openid.claimed_id");
+		if(identity == null){
+			identity = requestParameters.getParameterValue("openid.identity");
+		}
+		
+		if(identity != null){
+			String subdomain = new OpenIDUtil().getSubDomain(identity);
+			serverBean.setUsername(subdomain);
+		}
+		
+		resp.sendRedirect(manager.getUserSetupUrl());
+	}
+
+	protected void redirectToAuthorisationPage(HttpServletRequest req, HttpServletResponse resp, ParameterList requestParameters, OpenIDServerBean serverBean)	throws IOException {
+		String URL = req.getScheme() + "://" + req.getServerName() + (req.getServerPort() != 80 ? ":" + req.getServerPort() : "") + req.getRequestURI();
+		String queryString = req.getQueryString();
+		if(queryString != null){
+			URL += "?" + queryString;
+		}
+		serverBean.setServerUrl(URL);
+		serverBean.setParameterList(requestParameters);
+
+		String authenticateURL = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_AUTHENTICATION_URL, "http://www.elykill.is/pages/profile/mypage/authenticate/");
+
+		resp.sendRedirect(authenticateURL);
+	}
+
+	protected String getRealmName(String realm) {
+		String r = realm;
+		if (r.indexOf("http://") != -1) {
+			r = TextSoap.findAndCut(r, "http://");
+		} else if (r.indexOf("https://") != -1) {
+			r = TextSoap.findAndCut(r, "https://");
+		}
+		if (r.indexOf("/") != -1) {
+			r = r.substring(0, r.indexOf("/"));
+		}
+		return r;
+	}
+
+	protected boolean doRedirectToLoginPage(ServerManager manager, ParameterList requestParameters, IWContext iwc, String realm) {
+		boolean goToLogin = true;
+		//Log user out if this is an authentication request for a new association 
+		//(i.e. another Relying Party or an expired association) or if this is a new request
+		//after a completed successful one (loginExpireTime is removed on successful login)
+		String loginExpireHandle = requestParameters.hasParameter(OpenIDConstants.PARAMETER_ASSOCIATE_HANDLE) ? "openid-login-"+requestParameters.getParameterValue(OpenIDConstants.PARAMETER_ASSOCIATE_HANDLE) : null;
+		Date currentTime = new Date();
+		if(loginExpireHandle==null){
+			String simpleRegHandle = "openid-simpleRegHandle-"+realm;
+			Date loginExpirationTime = (Date)iwc.getSessionAttribute(simpleRegHandle);
+			
+			if(loginExpirationTime == null || currentTime.after(loginExpirationTime)){
+				if(iwc.isLoggedOn()){
+					//Make user log in again
+					LoginBusinessBean loginBusiness = getLoginBusiness(iwc.getRequest());
+					loginBusiness.logOutUser(iwc);
+				}
+				int expireInMilliSeconds = manager.getExpireIn()*1000;
+				iwc.setSessionAttribute(simpleRegHandle, new Date(currentTime.getTime()+expireInMilliSeconds));
+				goToLogin = true;
+			} else {
+				//coming here again in the same request/association
+				goToLogin = !iwc.isLoggedOn();
+			}
+		} else {
+			Date loginExpirationTime = (Date)iwc.getSessionAttribute(loginExpireHandle);
+			
+			
+			if(loginExpirationTime == null || currentTime.after(loginExpirationTime)){
+				if(iwc.isLoggedOn()){
+					//Make user log in again
+					LoginBusinessBean loginBusiness = getLoginBusiness(iwc.getRequest());
+					loginBusiness.logOutUser(iwc);
+				}
+				int expireInMilliSeconds = manager.getExpireIn()*1000;
+				iwc.setSessionAttribute(loginExpireHandle, new Date(currentTime.getTime()+expireInMilliSeconds));
+				goToLogin = true;
+			} else {
+				//coming here again in the same request/association
+				goToLogin = !iwc.isLoggedOn();
+			}
+		}
+		return goToLogin;
+	}
+
 	private String getUserSelectedClaimedId(IWContext iwc, User user) {
 		String identityFormat = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_OPENID_IDENTITY_FORMAT, "http://{0}.elykill.is/pages/profile/mypage/");
 		String identity = MessageFormat.format(identityFormat, getUserBusiness(iwc).getUserLogin(user));
 		return identity;
 	}
-
-//	private void cleanUpBeforeReturning(IWContext iwc, String loginExpireHandle) {
-//		//Make user log in again next time
-//		LoginBusinessBean loginBusiness = getLoginBusiness(iwc.getRequest());
-//		loginBusiness.logOutUser(iwc);
-//		
-//		
-//		//Session is invalidated when logged out, hence no need to do this
-////		iwc.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_SUBDOMAIN);
-////		iwc.getSession().removeAttribute(OpenIDConstants.ATTRIBUTE_ALLOWED_REALM);
-////
-////		iwc.getSession().removeAttribute(OpenIDConstants.PARAMETER_REQUIRED_ATTRIBUTES);
-////		iwc.getSession().removeAttribute(OpenIDConstants.PARAMETER_ALL_ATTRIBUTES);
-////		
-////		iwc.getSession().removeAttribute(loginExpireHandle);
-//	}
 
 	protected String getAttributeValue(IWContext iwc, User user, String alias, String type){
 		

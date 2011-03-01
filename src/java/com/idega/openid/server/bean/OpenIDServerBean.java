@@ -1,10 +1,10 @@
 package com.idega.openid.server.bean;
 
 import java.util.List;
-import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.openid4java.message.ParameterList;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +24,7 @@ public class OpenIDServerBean {
 	
 	private String serverUrl;
 	private Boolean doRedirect;
-	private Map parameterMap;
+	private ParameterList parameterList;
 	
 	private List<AuthorizedAttribute> requiredAttributes;
 	private List<AuthorizedAttribute> requestedAttributes;
@@ -70,12 +70,12 @@ public class OpenIDServerBean {
 		this.doRedirect = doRedirect;
 	}
 
-	public Map getParameterMap() {
-		return parameterMap;
+	public ParameterList getParameterList() {
+		return parameterList;
 	}
 
-	public void setParameterMap(Map parameterMap) {
-		this.parameterMap = parameterMap;
+	public void setParameterList(ParameterList parameterList) {
+		this.parameterList = parameterList;
 	}
 
 	public void setRequiredAttributes(List<AuthorizedAttribute> required) {
@@ -122,7 +122,7 @@ public class OpenIDServerBean {
 		returnUrl = null;
 		serverUrl = null;
 		doRedirect = null;
-		parameterMap = null;
+		parameterList = null;
 		requiredAttributes = null;
 		requestedAttributes = null;
 		optionalAttributes = null;
