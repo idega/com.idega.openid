@@ -21,6 +21,8 @@ import com.idega.business.IBORuntimeException;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.core.idgenerator.business.UUIDGenerator;
 import com.idega.core.location.data.Address;
+import com.idega.core.location.data.Country;
+import com.idega.core.location.data.PostalCode;
 import com.idega.core.messaging.EmailMessage;
 import com.idega.core.messaging.MessagingSettings;
 import com.idega.idegaweb.IWApplicationContext;
@@ -705,7 +707,16 @@ public class OpenIDSignUpBean {
 				encryptionType, 
 				usrFullName);
 		
-		//TODO add address to user
+		try {
+			Country country = getUserBusiness(iwc).getAddressBusiness().getCountry("IS");
+			PostalCode postal = getUserBusiness(iwc).getAddressBusiness().getPostalCodeAndCreateIfDoesNotExist(getPostalCode(), getCity(), country);
+			getUserBusiness(iwc).updateUsersMainAddressOrCreateIfDoesNotExist(usr, getAddress(), postal, country, null, null, null, null);
+		}
+		catch (FinderException fe) {
+			//No country found...
+		}
+		
+		getUserBusiness(iwc).updateUserMail(usr, getEmail());
 		
 		return usr;
 	}

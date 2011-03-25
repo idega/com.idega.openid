@@ -1,7 +1,6 @@
 package com.idega.openid.client.filter;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -60,7 +59,6 @@ import com.idega.user.business.UserBusiness;
 import com.idega.user.data.GroupBMPBean;
 import com.idega.user.data.User;
 import com.idega.util.IWTimestamp;
-import com.idega.util.RequestUtil;
 import com.idega.util.StringHandler;
 import com.idega.util.text.Name;
 import com.idega.util.text.SocialSecurityNumber;

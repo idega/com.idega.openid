@@ -1,5 +1,8 @@
 package com.idega.openid.util;
 
+import com.idega.core.builder.data.ICDomain;
+import com.idega.idegaweb.IWMainApplication;
+
 public class OpenIDUtil {
 
 	private static final String WWW = "www";
@@ -7,6 +10,11 @@ public class OpenIDUtil {
 	private static final String HTTPS_PROTOCOL = "https://";
 
 	public String getSubDomain(String serverName) {
+		ICDomain domain = IWMainApplication.getDefaultIWApplicationContext().getDomain();
+		if (domain.getServerName().equals(serverName)) {
+			return null;
+		}
+
 		String subdomain = null;
 		if (serverName.indexOf(HTTPS_PROTOCOL) != -1) {
 			serverName = serverName.substring(serverName.indexOf(HTTPS_PROTOCOL) + 8);
@@ -19,10 +27,5 @@ public class OpenIDUtil {
 		}
 		
 		return subdomain;
-	}
-	
-	public static void main(String[] args) {
-		OpenIDUtil util = new OpenIDUtil();
-		System.out.println(util.getSubDomain("https://laddi.local.is:8080/pages/profile/mypage/"));
 	}
 }

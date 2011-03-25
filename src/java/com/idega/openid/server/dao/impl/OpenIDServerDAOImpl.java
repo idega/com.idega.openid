@@ -72,23 +72,33 @@ public class OpenIDServerDAOImpl extends GenericDaoImpl implements OpenIDServerD
 	
 	@Transactional(readOnly = false)
 	public void createExchangeAttribute(String name, String type) {
-		ExchangeAttribute attr = new ExchangeAttribute();
-		attr.setName(name);
-		attr.setType(type);
-		attr.setAddedWhen(new Date());
-		getEntityManager().persist(attr);
+		ExchangeAttribute attr = getExchangeAttribute(name, type);
+		if (attr == null) {
+			attr = new ExchangeAttribute();
+			attr.setName(name);
+			attr.setType(type);
+			attr.setAddedWhen(new Date());
+			getEntityManager().persist(attr);
+		}
 	}
 
+	@Override
+	public ExchangeAttribute getExchangeAttribute(String name) {
+		Param p1 = new Param("name", name);
+		
+		return getSingleResult("exchangeAttr.findByName", ExchangeAttribute.class, p1);
+	}
+	
 	@Override
 	public ExchangeAttribute getExchangeAttribute(String name, String type) {
 		Param p1 = new Param("name", name);
 		Param p2 = new Param("type", type);
 		
-		return getSingleResult("exchangeAttr.findByNameAndType", ExchangeAttribute.class, p1, p2);
+		return getSingleResult("exchangeAttr.findByNameOrType", ExchangeAttribute.class, p1, p2);
 	}
 	
 	public void saveAuthorizedAttribute(AuthorizedAttribute attr){
-		if(attr.isNotYetStored()){
+		if (attr.isNotYetStored()) {
 			attr.setAddedWhen(new Date());
 		}
 		getEntityManager().persist(attr);

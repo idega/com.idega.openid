@@ -27,9 +27,7 @@ public class OpenIDAuthenticateBean {
 		this.alwaysAllow = alwaysAllow;
 	}
 	
-	
 	/* Actions begin*/
-	
 	public void allow(){
 		IWContext iwc = IWContext.getCurrentInstance();
 		OpenIDServerBean serverBean = ELUtil.getInstance().getBean("openIDServerBean");
@@ -69,5 +67,4 @@ public class OpenIDAuthenticateBean {
 	}
 	
 	/* Actions end */
-
 }

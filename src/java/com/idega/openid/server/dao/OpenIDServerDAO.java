@@ -20,6 +20,8 @@ public interface OpenIDServerDAO extends GenericDao {
 
 	public void createExchangeAttribute(String name, String type);
 	
+	public ExchangeAttribute getExchangeAttribute(String name);
+	
 	public ExchangeAttribute getExchangeAttribute(String name, String type);
 	
 	public void saveAuthorizedAttribute(AuthorizedAttribute attr);

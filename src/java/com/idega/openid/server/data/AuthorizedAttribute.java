@@ -8,8 +8,6 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
@@ -17,11 +15,10 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.persistence.Transient;
-import javax.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = AuthorizedAttribute.ENTITY_NAME)
-@UniqueConstraint(columnNames={AuthorizedAttribute.COLUMN_USER,AuthorizedAttribute.COLUMN_REALM,AuthorizedAttribute.COLUMN_EXCHANGE_ATTRIBUTE})
+//@UniqueConstraint(columnNames={AuthorizedAttribute.COLUMN_USER,AuthorizedAttribute.COLUMN_REALM,AuthorizedAttribute.COLUMN_EXCHANGE_ATTRIBUTE})
 @NamedQueries({
         @NamedQuery(name = "authAttr.findAll", query = "select a from AuthorizedAttribute a"),
         @NamedQuery(name = "authAttr.findAllByUser", query = "select a from AuthorizedAttribute a where a.userUUID = :userUUID"),

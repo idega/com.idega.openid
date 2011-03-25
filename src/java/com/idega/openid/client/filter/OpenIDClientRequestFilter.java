@@ -27,9 +27,7 @@ import com.idega.core.accesscontrol.business.LoginBusinessBean;
 import com.idega.core.accesscontrol.business.LoginState;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
-import com.idega.openid.client.bean.OpenIDClientBean;
 import com.idega.servlet.filter.BaseFilter;
-import com.idega.util.expression.ELUtil;
 
 public class OpenIDClientRequestFilter extends BaseFilter {
 

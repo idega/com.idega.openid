@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -18,6 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openid4java.association.AssociationException;
+import org.openid4java.association.AssociationSessionType;
 import org.openid4java.message.AuthFailure;
 import org.openid4java.message.AuthRequest;
 import org.openid4java.message.AuthSuccess;
@@ -29,6 +34,9 @@ import org.openid4java.message.ParameterList;
 import org.openid4java.message.ax.AxMessage;
 import org.openid4java.message.ax.FetchRequest;
 import org.openid4java.message.ax.FetchResponse;
+import org.openid4java.message.sreg.SRegMessage;
+import org.openid4java.message.sreg.SRegRequest;
+import org.openid4java.message.sreg.SRegResponse;
 import org.openid4java.server.InMemoryServerAssociationStore;
 import org.openid4java.server.ServerException;
 import org.openid4java.server.ServerManager;
@@ -38,7 +46,11 @@ import com.idega.business.IBOLookup;
 import com.idega.business.IBOLookupException;
 import com.idega.business.IBORuntimeException;
 import com.idega.core.accesscontrol.business.LoginBusinessBean;
+import com.idega.core.accesscontrol.business.LoginDBHandler;
 import com.idega.core.contact.data.Email;
+import com.idega.core.location.data.Address;
+import com.idega.core.location.data.Country;
+import com.idega.core.location.data.PostalCode;
 import com.idega.idegaweb.IWApplicationContext;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.openid.OpenIDConstants;
@@ -51,6 +63,8 @@ import com.idega.presentation.IWContext;
 import com.idega.user.business.NoEmailFoundException;
 import com.idega.user.business.UserBusiness;
 import com.idega.user.data.User;
+import com.idega.util.IWTimestamp;
+import com.idega.util.LocaleUtil;
 import com.idega.util.expression.ELUtil;
 import com.idega.util.text.TextSoap;
 
@@ -226,11 +240,12 @@ public class OpenIDServerServlet extends HttpServlet {
 		        FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
 		        List<AuthorizedAttribute> s = serverBean.getRequestedAttributes();
 		        Set<String> keys = requestedAttributes.keySet();
+		        Collection<String> types = requestedAttributes.values();
 		        for(AuthorizedAttribute a : s){
 		        	ExchangeAttribute attr = a.getExchangeAttribute();
 		        	String alias = attr.getName();
 		        	String type = attr.getType();
-		        	if(keys.contains(alias) && type.equals(requestedAttributes.get(alias))){
+		        	if(keys.contains(alias) || types.contains(type)){
 		        		String value = getAttributeValue(iwc,user,alias,type);
 		            	if(value==null){
 		            		value="";
@@ -247,9 +262,43 @@ public class OpenIDServerServlet extends HttpServlet {
 		        }
 		        
 		        response.addExtension(fetchResp);
+		        return attributesLog;
 		    }
 		    else /*if (ext instanceof StoreRequest)*/ {
 		        throw new UnsupportedOperationException("TODO");
+		    }
+		}
+		if (authReq.hasExtension(SRegMessage.OPENID_NS_SREG11)) {
+			MessageExtension ext = authReq.getExtension(SRegMessage.OPENID_NS_SREG11);
+
+		    if (ext instanceof SRegRequest) {
+		        SRegRequest sregReq = (SRegRequest) ext;
+		        List<String> required = sregReq.getAttributes(true);
+		        List<String> optional = sregReq.getAttributes(false);
+
+		        Map userData = new HashMap();
+		        for (String alias : required) {
+					String value = getAttributeValue(iwc, user, alias, null);
+					if (value != null) {
+						userData.put(alias, value);
+		            	attributesLog.append('[').append(alias).append(';').append(value)
+		            	.append("],");
+					}
+					else {
+		        		throw new UnsupportedOperationException("Required attribute not supported.");
+					}
+				}
+		        for (String alias : optional) {
+					String value = getAttributeValue(iwc, user, alias, null);
+					if (value != null) {
+						userData.put(alias, value);
+		            	attributesLog.append('[').append(alias).append(';').append(value)
+		            	.append("],");
+					}
+				}
+		        
+				SRegResponse sregResp = SRegResponse.createSRegResponse(sregReq, userData);
+				response.addExtension(sregResp);
 		    }
 		}
 		return attributesLog;
@@ -354,14 +403,13 @@ public class OpenIDServerServlet extends HttpServlet {
 	}
 
 	private String getUserSelectedClaimedId(IWContext iwc, User user) {
-		String identityFormat = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_OPENID_IDENTITY_FORMAT, "http://{0}.elykill.is/pages/profile/mypage/");
+		String identityFormat = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_OPENID_IDENTITY_FORMAT, "http://{0}.elykill.is");
 		String identity = MessageFormat.format(identityFormat, getUserBusiness(iwc).getUserLogin(user));
 		return identity;
 	}
 
 	protected String getAttributeValue(IWContext iwc, User user, String alias, String type){
-		
-		if(OpenIDConstants.ATTRIBUTE_ALIAS_EMAIL.equals(alias) && OpenIDConstants.ATTRIBUTE_TYPE_EMAIL.equals(type)){
+		if(OpenIDConstants.ATTRIBUTE_ALIAS_EMAIL.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_EMAIL.equals(type)){
 			Email email = null;
 			try {
 				email = getUserBusiness(iwc).getUsersMainEmail(user);
@@ -372,15 +420,79 @@ public class OpenIDServerServlet extends HttpServlet {
 			}
 			
 			return (email != null ? email.getEmailAddress() : "");
-		} else if(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID.equals(alias) && OpenIDConstants.ATTRIBUTE_TYPE_PERSONAL_ID.equals(type)){
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_PERSONAL_ID.equals(type)){
 			return (user.getPersonalID() != null ? user.getPersonalID() : "");
-		} else if(OpenIDConstants.ATTRIBUTE_ALIAS_FULL_NAME.equals(alias) && OpenIDConstants.ATTRIBUTE_TYPE_FULL_NAME.equals(type)){
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_FULL_NAME.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_FULL_NAME.equals(type)){
 			return user.getName();
-		} else if(OpenIDConstants.ATTRIBUTE_ALIAS_DATE_OF_BIRTH.equals(alias) && OpenIDConstants.ATTRIBUTE_TYPE_DATE_OF_BIRTH.equals(type)){
-			return (user.getDateOfBirth() != null ? Long.toString(user.getDateOfBirth().getTime()) : "");
-		} else if(OpenIDConstants.ATTRIBUTE_ALIAS_GENDER.equals(alias) && OpenIDConstants.ATTRIBUTE_TYPE_GENDER.equals(type)){
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_DATE_OF_BIRTH.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_DATE_OF_BIRTH.equals(type)){
+			return (user.getDateOfBirth() != null ? new IWTimestamp(user.getDateOfBirth()).toSQLDateString() : "");
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_GENDER.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_GENDER.equals(type)){
 			return (user.getGender() != null ? (user.getGender().isMaleGender() ? "M" : "F") : "");
 		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_NICKNAME.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_FRIENDLY_NAME.equals(type)){
+			return LoginDBHandler.getUserLogin(user).getUserLogin();
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_POSTCODE.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_POSTAL_CODE.equals(type)){
+			try {
+				Address address = getUserBusiness(iwc).getUsersMainAddress(user);
+				if (address != null) {
+					PostalCode postal = address.getPostalCode();
+					return postal != null ? postal.getPostalCode() : "";
+				}
+			}
+			catch (RemoteException re) {
+				re.printStackTrace();
+			}
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_COUNTRY.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_COUNTRY.equals(type)){
+			try {
+				Address address = getUserBusiness(iwc).getUsersMainAddress(user);
+				if (address != null) {
+					return address.getCountry().getIsoAbbreviation();
+				}
+			}
+			catch (RemoteException re) {
+				re.printStackTrace();
+			}
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_LANGUAGE.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_LANGUAGE.equals(type)){
+			if (user.getPreferredLocale() != null) {
+				Locale locale = LocaleUtil.getLocale(user.getPreferredLocale());
+				return locale.getLanguage() + "-" + locale.getCountry();
+			}
+			else {
+				try {
+					Address address = getUserBusiness(iwc).getUsersMainAddress(user);
+					if (address != null) {
+						Country country = address.getCountry();
+						return country.getIsoAbbreviation().toLowerCase() + "-" + country.getIsoAbbreviation();
+					}
+				}
+				catch (RemoteException re) {
+					re.printStackTrace();
+				}
+			}
+		}
+		else if(OpenIDConstants.ATTRIBUTE_ALIAS_TIMEZONE.equals(alias) || OpenIDConstants.ATTRIBUTE_TYPE_TIMEZONE.equals(type)){
+			try {
+				Address address = getUserBusiness(iwc).getUsersMainAddress(user);
+				if (address != null) {
+					Country country = address.getCountry();
+					Locale locale = new Locale(country.getIsoAbbreviation().toLowerCase(), country.getIsoAbbreviation());
+					Calendar calendar = new GregorianCalendar(locale);
+					
+					return calendar.getTimeZone().getDisplayName(Locale.ENGLISH);
+				}
+			}
+			catch (RemoteException re) {
+				re.printStackTrace();
+			}
+		}
+		
 		return "";	
     }
 
@@ -493,6 +605,7 @@ public class OpenIDServerServlet extends HttpServlet {
                     serverBean.setRequestedAttributes(allAttributesList);
                     serverBean.setRequiredAttributes(requiredAttributesList);
                     serverBean.setOptionalAttributes(optionalAttributesList);
+                    return;
                 }
                 else /*if (ext instanceof StoreRequest)*/ {
                 	//TODO implement?
@@ -500,6 +613,55 @@ public class OpenIDServerServlet extends HttpServlet {
                 }
 			} catch (MessageException e) {
 				e.printStackTrace();
+			}
+		}
+		if (authReq.hasExtension(SRegMessage.OPENID_NS_SREG11)) {
+			try {
+				MessageExtension ext = authReq.getExtension(SRegMessage.OPENID_NS_SREG11);
+
+			    if (ext instanceof SRegRequest) {
+			        SRegRequest sregReq = (SRegRequest) ext;
+			        List<String> all = sregReq.getAttributes();
+			        List<String> required = sregReq.getAttributes(true);
+			        List<String> optional = sregReq.getAttributes(false);
+
+	                List<AuthorizedAttribute> allAttributesList = new ArrayList<AuthorizedAttribute>();
+	                List<AuthorizedAttribute> requiredAttributesList = new ArrayList<AuthorizedAttribute>();
+	                List<AuthorizedAttribute> optionalAttributesList = new ArrayList<AuthorizedAttribute>();
+
+                    OpenIDServerBean serverBean = ELUtil.getInstance().getBean("openIDServerBean");
+	                String realm = serverBean.getRealm();
+	                User user = iwc.getCurrentUser();
+	                
+			        for (String alias : all) {
+			        	ExchangeAttribute attribute = getDAO().getExchangeAttribute(alias);
+			        	if (attribute != null) {
+	                		AuthorizedAttribute aattr = getDAO().getAuthorizedAttributes(user.getUniqueId(), realm, attribute);
+	                		if(aattr == null){
+	                			aattr = new AuthorizedAttribute();
+	                			aattr.setExchangeAttribute(attribute);
+	                			aattr.setRealm(realm);
+	                			aattr.setUserUUID(user.getUniqueId());
+	                			aattr.setIsAllowed(true);
+	                		}
+	                		allAttributesList.add(aattr);
+	                		if (required.contains(alias)) {
+	                			requiredAttributesList.add(aattr);
+	                		}
+	                		if (optional.contains(alias)) {
+	                			optionalAttributesList.add(aattr);
+	                		}
+			        	}
+                	}
+			        
+                    serverBean.setRequestedAttributes(allAttributesList);
+                    serverBean.setRequiredAttributes(requiredAttributesList);
+                    serverBean.setOptionalAttributes(optionalAttributesList);
+                    return;
+			    }
+			}
+			catch (MessageException e) {
+					e.printStackTrace();
 			}
 		}
 	}

@@ -42,12 +42,22 @@ public class OpenIDConstants {
 	public static final String ATTRIBUTE_ALIAS_FULL_NAME = "fullname";
 	public static final String ATTRIBUTE_ALIAS_DATE_OF_BIRTH = "dob";
 	public static final String ATTRIBUTE_ALIAS_GENDER = "gender";
+	public static final String ATTRIBUTE_ALIAS_NICKNAME = "nickname";
+	public static final String ATTRIBUTE_ALIAS_POSTCODE = "postcode";
+	public static final String ATTRIBUTE_ALIAS_COUNTRY = "country";
+	public static final String ATTRIBUTE_ALIAS_LANGUAGE = "language";
+	public static final String ATTRIBUTE_ALIAS_TIMEZONE = "timezone";
 	
-	public static final String ATTRIBUTE_TYPE_EMAIL = "http://schema.openid.net/contact/email";
+	public static final String ATTRIBUTE_TYPE_EMAIL = "http://axschema.org/contact/email";
 	public static final String ATTRIBUTE_TYPE_PERSONAL_ID = "http://www.elykill.is/contact/personalID";
-	public static final String ATTRIBUTE_TYPE_FULL_NAME = "http://schema.openid.net/contact/fullname";
-	public static final String ATTRIBUTE_TYPE_DATE_OF_BIRTH = "http://schema.openid.net/contact/dob";
-	public static final String ATTRIBUTE_TYPE_GENDER = "http://schema.openid.net/contact/gender";
+	public static final String ATTRIBUTE_TYPE_FULL_NAME = "http://axschema.org/namePerson";
+	public static final String ATTRIBUTE_TYPE_FRIENDLY_NAME = "http://axschema.org/namePerson/friendly";
+	public static final String ATTRIBUTE_TYPE_DATE_OF_BIRTH = "http://axschema.org/birthDate";
+	public static final String ATTRIBUTE_TYPE_GENDER = "http://axschema.org/person/gender";
+	public static final String ATTRIBUTE_TYPE_POSTAL_CODE = "http://axschema.org/contact/postalCode/home";
+	public static final String ATTRIBUTE_TYPE_COUNTRY = "http://axschema.org/contact/country/home";
+	public static final String ATTRIBUTE_TYPE_LANGUAGE = "http://axschema.org/pref/language";
+	public static final String ATTRIBUTE_TYPE_TIMEZONE = "http://axschema.org/pref/timezone";
 
 	public static final String LOGIN_TYPE = "openid";
 

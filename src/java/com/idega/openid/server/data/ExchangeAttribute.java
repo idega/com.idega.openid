@@ -17,10 +17,11 @@ import javax.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = ExchangeAttribute.ENTITY_NAME)
-@UniqueConstraint(columnNames={ExchangeAttribute.COLUMN_ATTRIBUTE_NAME,ExchangeAttribute.COLUMN_ATTRIBUTE_TYPE})
+//@UniqueConstraint(columnNames={ExchangeAttribute.COLUMN_ATTRIBUTE_NAME,ExchangeAttribute.COLUMN_ATTRIBUTE_TYPE})
 @NamedQueries({
         @NamedQuery(name = "exchangeAttr.findAll", query = "select a from ExchangeAttribute a"),
-        @NamedQuery(name = "exchangeAttr.findByNameAndType", query = "select a from ExchangeAttribute a where a.name = :name and a.type = :type")
+        @NamedQuery(name = "exchangeAttr.findByNameOrType", query = "select a from ExchangeAttribute a where a.name = :name or a.type = :type"),
+        @NamedQuery(name = "exchangeAttr.findByName", query = "select a from ExchangeAttribute a where a.name = :name")
 })
 public class ExchangeAttribute implements Serializable {
 

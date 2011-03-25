@@ -116,7 +116,6 @@ public class OpenIDServerBean {
 	 * May invalidate session
 	 */
 	public void invalidate(){
-		
 		username = null;
 		realm = null;
 		returnUrl = null;
@@ -136,20 +135,4 @@ public class OpenIDServerBean {
 	private LoginBusinessBean getLoginBusiness(HttpServletRequest request){
 		return LoginBusinessBean.getLoginBusinessBean(request);
 	}
-	
-	
-	
-//	/*      */
-//	public boolean getIncludeAttributeInResponce(String alias,String type){
-//		if(requestedAttributes != null){
-//			for(AuthorizedAttribute attr : requestedAttributes){
-//				ExchangeAttribute eattr = attr.getExchangeAttribute();
-//				if(eattr.getName().equals(alias) && eattr.getType().equals(type)){
-//					return attr.getIsAllowed();
-//				}
-//			}
-//		}
-//		return false;
-//	}
-	
 }
