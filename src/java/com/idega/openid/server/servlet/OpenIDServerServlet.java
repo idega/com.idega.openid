@@ -22,7 +22,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openid4java.association.AssociationException;
-import org.openid4java.association.AssociationSessionType;
 import org.openid4java.message.AuthFailure;
 import org.openid4java.message.AuthRequest;
 import org.openid4java.message.AuthSuccess;
@@ -91,6 +90,7 @@ public class OpenIDServerServlet extends HttpServlet {
 	@SuppressWarnings("unchecked")
 	protected void processRequest(HttpServletRequest req, HttpServletResponse resp, boolean isPost) throws ServletException, IOException {
 		ServerManager manager = getServerManager();
+		IWMainApplication iwma = IWMainApplication.getIWMainApplication(req);
 
 		// extract the parameters from the request
         ParameterList requestParameters = new ParameterList(req.getParameterMap());
@@ -164,12 +164,17 @@ public class OpenIDServerServlet extends HttpServlet {
 		        		return;
 		            }
 		            else {
-		            	StringBuffer attributesLog = new StringBuffer();
-		            	prepareResponse(serverBean, response, iwc, user, authReq, attributesLog);
+		            	String[] extensionsToSign = prepareResponse(serverBean, response, iwc, user, authReq);
+		            	boolean signExtensions = iwma.getSettings().getBoolean(OpenIDConstants.PROPERTY_SIGN_EXTENSIONS, false);
 		
+		            	AuthSuccess success = (AuthSuccess) response;
+		            	if (signExtensions) {
+		            		success.setSignExtensions(extensionsToSign);
+		            	}
+		            	
 		                // Sign the auth success message.
 		                // This is required as AuthSuccess.buildSignedList has a `todo' tag now.
-		                manager.sign((AuthSuccess) response);
+		                manager.sign(success);
 		
 		                // caller will need to decide which of the following to use:
 		
@@ -178,18 +183,17 @@ public class OpenIDServerServlet extends HttpServlet {
 		                //Clean up before returning
 		                serverBean.invalidate();
 		        		
-		        		getDAO().createLogEntry(user.getUniqueId(), realm, attributesLog.toString());
+		        		getDAO().createLogEntry(user.getUniqueId(), realm, "");
 		        		
 		                resp.sendRedirect(response.getDestinationUrl(true));
 		                return;
 		
 		                // option2: HTML FORM Redirection
 		                //RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("formredirection.jsp");
-		                //httpReq.setAttribute("prameterMap", response.getParameterMap());
+		                //httpReq.setAttribute("parameterMap", response.getParameterMap());
 		                //httpReq.setAttribute("destinationUrl", response.getDestinationUrl(false));
 		                //dispatcher.forward(request, response);
 		                //return null;
-//		                responseText = response.wwwFormEncoding();  //????? http://code.sxip.com/openid4java/apidoc/org/openid4java/server/package-summary.html
 		            }
 	        	}
 	        	else {
@@ -229,44 +233,46 @@ public class OpenIDServerServlet extends HttpServlet {
         directResponse(resp, responseText);
     }
 
-	protected StringBuffer prepareResponse(OpenIDServerBean serverBean, Message response, IWContext iwc, User user, AuthRequest authReq, StringBuffer attributesLog) throws MessageException {
+	protected String[] prepareResponse(OpenIDServerBean serverBean, Message response, IWContext iwc, User user, AuthRequest authReq) throws MessageException {
+		List<String> extensionsToSign = new ArrayList<String>();
 		if (authReq.hasExtension(AxMessage.OPENID_NS_AX)) {
-		    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
-		    if (ext instanceof FetchRequest) {
-		        FetchRequest fetchReq = (FetchRequest) ext;
-		        Map<String,String> requestedAttributes = fetchReq.getAttributes();
-		        Map userDataExt = new HashMap();
-				
-		        FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
-		        List<AuthorizedAttribute> s = serverBean.getRequestedAttributes();
-		        Set<String> keys = requestedAttributes.keySet();
-		        Collection<String> types = requestedAttributes.values();
-		        for(AuthorizedAttribute a : s){
-		        	ExchangeAttribute attr = a.getExchangeAttribute();
-		        	String alias = attr.getName();
-		        	String type = attr.getType();
-		        	if(keys.contains(alias) || types.contains(type)){
-		        		String value = getAttributeValue(iwc,user,alias,type);
-		            	if(value==null){
-		            		value="";
-		            	}
-		            	fetchResp.addAttribute(alias, type, value);
-		            	//write log entry
-		            	attributesLog.append('[').append(alias).append(';').append(type)
-		            	//.append(';').append(value)
-		            	.append("],");
-		        	} else {
-		        		//FetchRequest not asking for this attribute
-		        		throw new UnsupportedOperationException("Processed and requested attributes do not match.");
-		        	}
-		        }
-		        
-		        response.addExtension(fetchResp);
-		        return attributesLog;
-		    }
-		    else /*if (ext instanceof StoreRequest)*/ {
-		        throw new UnsupportedOperationException("TODO");
-		    }
+			try {
+			    MessageExtension ext = authReq.getExtension(AxMessage.OPENID_NS_AX);
+			    if (ext instanceof FetchRequest) {
+			        FetchRequest fetchReq = (FetchRequest) ext;
+			        Map<String,String> requestedAttributes = fetchReq.getAttributes();
+			        Map userDataExt = new HashMap();
+					
+			        FetchResponse fetchResp = FetchResponse.createFetchResponse(fetchReq, userDataExt);
+			        List<AuthorizedAttribute> s = serverBean.getRequestedAttributes();
+			        Set<String> keys = requestedAttributes.keySet();
+			        Collection<String> types = requestedAttributes.values();
+			        for(AuthorizedAttribute a : s){
+			        	ExchangeAttribute attr = a.getExchangeAttribute();
+			        	String alias = attr.getName();
+			        	String type = attr.getType();
+			        	if(keys.contains(alias) || types.contains(type)){
+			        		String value = getAttributeValue(iwc,user,alias,type);
+			            	if(value==null){
+			            		value="";
+			            	}
+			            	fetchResp.addAttribute(alias, type, value);
+			        	} else {
+			        		//FetchRequest not asking for this attribute
+			        		throw new UnsupportedOperationException("Processed and requested attributes do not match.");
+			        	}
+			        }
+			        
+			        response.addExtension(fetchResp);
+				    extensionsToSign.add(AxMessage.OPENID_NS_AX);
+			    }
+			    else /*if (ext instanceof StoreRequest)*/ {
+			        throw new UnsupportedOperationException("TODO");
+			    }
+			}
+			catch (MessageException me) {
+				System.err.println(me.getMessage());
+			}
 		}
 		if (authReq.hasExtension(SRegMessage.OPENID_NS_SREG11)) {
 			MessageExtension ext = authReq.getExtension(SRegMessage.OPENID_NS_SREG11);
@@ -279,29 +285,30 @@ public class OpenIDServerServlet extends HttpServlet {
 		        Map userData = new HashMap();
 		        for (String alias : required) {
 					String value = getAttributeValue(iwc, user, alias, null);
-					if (value != null) {
+					if (alias.length() > 0 && value != null) {
 						userData.put(alias, value);
-		            	attributesLog.append('[').append(alias).append(';').append(value)
-		            	.append("],");
 					}
-					else {
-		        		throw new UnsupportedOperationException("Required attribute not supported.");
+					else if (alias.length() > 0){
+		        		throw new UnsupportedOperationException("Required attribute not supported: " + alias);
 					}
 				}
 		        for (String alias : optional) {
 					String value = getAttributeValue(iwc, user, alias, null);
-					if (value != null) {
+					if (alias.length() > 0 && value != null) {
 						userData.put(alias, value);
-		            	attributesLog.append('[').append(alias).append(';').append(value)
-		            	.append("],");
 					}
 				}
 		        
 				SRegResponse sregResp = SRegResponse.createSRegResponse(sregReq, userData);
 				response.addExtension(sregResp);
+			    extensionsToSign.add(SRegMessage.OPENID_NS_SREG11);
+		    }
+		    else if (ext instanceof SRegResponse) {
+		    	response.addExtension(ext);
 		    }
 		}
-		return attributesLog;
+		
+		return extensionsToSign.toArray(new String[extensionsToSign.size()]);
 	}
 
 	protected void redirectToLoginPage(HttpServletRequest req, HttpServletResponse resp, ParameterList requestParameters, OpenIDServerBean serverBean, ServerManager manager) throws IOException {
@@ -698,10 +705,7 @@ public class OpenIDServerServlet extends HttpServlet {
 			manager = new ServerManager();
 			manager.setSharedAssociations(new InMemoryServerAssociationStore());
 			manager.setPrivateAssociations(new InMemoryServerAssociationStore());
-//			
-//			log("OpenIDServerServlet: Only for testing - Remove code: manager.setExpireIn(...);");
-//			manager.setExpireIn(30);
-//			
+
 			manager.setOPEndpointUrl(endPointUrl);
 			manager.setUserSetupUrl(userSetupUrl);
 			IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_SERVER_MANAGER, manager);
