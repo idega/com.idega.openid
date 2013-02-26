@@ -41,6 +41,7 @@ import org.openid4java.message.sreg.SRegResponse;
 import com.idega.business.IBOLookup;
 import com.idega.business.IBOLookupException;
 import com.idega.business.IBORuntimeException;
+import com.idega.core.accesscontrol.business.AccessControl;
 import com.idega.core.accesscontrol.business.AuthenticationBusiness;
 import com.idega.core.accesscontrol.business.LoginBusinessBean;
 import com.idega.core.accesscontrol.business.LoginDBHandler;
@@ -56,7 +57,6 @@ import com.idega.repository.data.ImplementorRepository;
 import com.idega.servlet.filter.BaseFilter;
 import com.idega.servlet.filter.IWAuthenticator;
 import com.idega.user.business.UserBusiness;
-import com.idega.user.data.GroupBMPBean;
 import com.idega.user.data.User;
 import com.idega.util.IWTimestamp;
 import com.idega.util.StringHandler;
@@ -64,22 +64,24 @@ import com.idega.util.text.Name;
 import com.idega.util.text.SocialSecurityNumber;
 
 public class OpenIDClientResponseFilter extends BaseFilter {
-	
+
 	private static Logger LOGGER = Logger.getLogger(OpenIDClientResponseFilter.class.getName());
 
 	private ConsumerManager manager;
 
+	@Override
 	public void destroy() {
 		//No action...
 	}
 
+	@Override
 	public void doFilter(ServletRequest srequest, ServletResponse sresponse, FilterChain chain) throws IOException, ServletException {
 		HttpServletRequest request = (HttpServletRequest) srequest;
 		HttpServletResponse response = (HttpServletResponse) sresponse;
 		HttpSession session = request.getSession();
 
 		boolean loginFailed = false;
-		
+
 		String isReturn = request.getParameter(OpenIDConstants.PARAMETER_RETURN);
 		if (isReturn != null) {
 			LoginBusinessBean bean = LoginBusinessBean.getLoginBusinessBean(request);
@@ -93,7 +95,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 					String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID);
 					String login = getLoginName(identifier);
 					String loginType = OpenIDConstants.LOGIN_TYPE;
-					
+
 					try {
 						loginFailed = !bean.logInByPersonalID(request, personalID, login, null, loginType);
 					}
@@ -101,10 +103,10 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 						e.printStackTrace();
 						loginFailed = true;
 					}
-					
+
 					boolean updateUserInfo = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getBoolean(OpenIDConstants.PROPERTY_OPENID_CLIENT_UPDATE_USER_INFO, true);
-					
-					if(loginFailed){ 
+
+					if(loginFailed){
 						//try again if autoCreateUser is true
 						boolean autoCreateUser = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getBoolean(OpenIDConstants.PROPERTY_OPENID_AUTO_CREATE_USERS, true);
 						if(autoCreateUser){
@@ -130,7 +132,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 									loginFailed = true;
 								}
 							}
-							
+
 							if(usr != null){ //try logging in again
 								if(usr.getPersonalID().equals(personalID)){ //extra check
 									try {
@@ -150,7 +152,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				bean.internalSetState(request, LoginState.Failed);
 			}
 		}
-		
+
 		if (!loginFailed) {
 			chain.doFilter(request, response);
 		}
@@ -159,16 +161,16 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 
 			if (loginBusiness.isLoggedOn(request)) {
 				processJAASLogin(request);
-				
+
 				boolean didInterrupt = processAuthenticationListeners(request, response, session, loginBusiness);
 				if (didInterrupt) {
 					return;
 				}
-			}			
+			}
 			chain.doFilter(new IWJAASAuthenticationRequestWrapper(request), response);
 		}
 	}
-	
+
 	private String getLoginName(Identifier identifier) {
 		String login = identifier.getIdentifier();
 		if(login != null && login.contains("/")){
@@ -194,7 +196,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 	private void autoCreateLoginForAuthenticatedUser(User usr, String login, IWApplicationContext iwac, HttpServletRequest request) throws Exception {
 		//Password cannot be null or empty string
 		String password = StringHandler.getRandomString(16);
-		
+
 		Boolean accountEnabled = Boolean.TRUE;
 		int daysOfValidity = 10000;
 		Boolean passwordExpires = Boolean.FALSE;
@@ -205,7 +207,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		IWTimestamp modified = IWTimestamp.RightNow();
 
 		LoginDBHandler.createLogin(usr, login, password, accountEnabled, modified, daysOfValidity, passwordExpires, userAllowedToChangePassw, changeNextTime, encryptionType, loginType);
-		
+
 	}
 
 	private User autoCreateAuthenticatedUser(IWApplicationContext iwac, HttpServletRequest request) throws RemoteException, CreateException {
@@ -215,62 +217,60 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		String gender = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_GENDER);
 		String personalID = (String) request.getAttribute(OpenIDConstants.ATTRIBUTE_ALIAS_PERSONAL_ID);
 
-		
 		IWContext iwc = IWContext.getCurrentInstance();
 		String ssn = personalID;
 		IWTimestamp dateOfBirth = ssn != null ? new IWTimestamp(SocialSecurityNumber.getDateFromSocialSecurityNumber(ssn)) : null;
-		
+
 		Name name = new Name(fullName);
 		String displayName = fullName;
 		String description = null;
-		
-		Integer primaryGroup =  new Integer(GroupBMPBean.GROUP_ID_USERS);
+
+		Integer primaryGroup = new Integer(AccessControl._GROUP_ID_USERS);
 		Integer genderID = null;
 
 		User usr = getUserBusiness(iwc).createUser(
-				name.getFirstName(), 
-				name.getMiddleName(), 
-				name.getLastName(), 
-				displayName, 
-				ssn, 
-				description, 
-				genderID, 
-				dateOfBirth, 
-				primaryGroup, 
+				name.getFirstName(),
+				name.getMiddleName(),
+				name.getLastName(),
+				displayName,
+				ssn,
+				description,
+				genderID,
+				dateOfBirth,
+				primaryGroup,
 				fullName);
-		
+
 //		User usr = getUserBusiness(iwc).createUserWithLogin(
-//				name.getFirstName(), 
-//				name.getMiddleName(), 
-//				name.getLastName(), 
-//				ssn, 
-//				displayName, 
-//				description, 
-//				genderInt, 
-//				dateOfBirth, 
-//				null, 
-//				login, 
-//				password, 
-//				accountEnabled, 
-//				IWTimestamp.RightNow(), 
-//				daysOfValidity, 
-//				passwordExpires, 
-//				userAllowedToChangePassw, 
-//				changeNextTime, 
-//				encryptionType, 
+//				name.getFirstName(),
+//				name.getMiddleName(),
+//				name.getLastName(),
+//				ssn,
+//				displayName,
+//				description,
+//				genderInt,
+//				dateOfBirth,
+//				null,
+//				login,
+//				password,
+//				accountEnabled,
+//				IWTimestamp.RightNow(),
+//				daysOfValidity,
+//				passwordExpires,
+//				userAllowedToChangePassw,
+//				changeNextTime,
+//				encryptionType,
 //				fullName);
-		
+
 		return usr;
 	}
 
 	protected boolean processAuthenticationListeners(HttpServletRequest request, HttpServletResponse response, HttpSession session, LoginBusinessBean loginBusiness) throws RemoteException {
 		try {
 			AuthenticationBusiness authenticationBusiness = getAuthenticationBusiness(request);
-			User currentUser = loginBusiness.getCurrentUser(session);
+			com.idega.user.data.bean.User currentUser = loginBusiness.getCurrentUser(session);
 			IWContext iwc = getIWContext(request, response);
 			authenticationBusiness.callOnLogonMethodInAllAuthenticationListeners(iwc, currentUser);
-		}
-		catch (ServletFilterChainInterruptException e) {
+		} catch (ServletFilterChainInterruptException e) {
 			//this is normal behaviour if e.g. the listener issues a response.sendRedirect(...)
 			System.out.println("[IWAuthenticator] - Filter chain interrupted. The reason was: " + e.getMessage());
 			return true;
@@ -279,20 +279,18 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		return false;
 	}
 
-	@SuppressWarnings("unchecked")
 	protected void processJAASLogin(HttpServletRequest request) {
-		List loginModules = ImplementorRepository.getInstance().newInstances(LoginModule.class, this.getClass());
-		// just a shortcut 
+		List<?> loginModules = ImplementorRepository.getInstance().newInstances(LoginModule.class, this.getClass());
+		// just a shortcut
 		if (loginModules.isEmpty()) {
 			return;
 		}
 		CallbackHandler callbackHandler = new IWCallbackHandler(request);
-		Map sharedState = new HashMap(3);
+		Map<String, Object> sharedState = new HashMap<String, Object>(3);
 		HttpSession session = request.getSession();
 		sharedState.put(IWAuthenticator.REQUEST_KEY, request);
 		sharedState.put(IWAuthenticator.SESSION_KEY, session);
-		Iterator iteratorFirst = loginModules.iterator();
-		while (iteratorFirst.hasNext()) {
+		for (Iterator<?> iteratorFirst = loginModules.iterator(); iteratorFirst.hasNext();) {
 			LoginModule loginModule = (LoginModule) iteratorFirst.next();
 			try {
 				loginModule.initialize(null, callbackHandler, sharedState, null);
@@ -302,8 +300,8 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				e.printStackTrace();
 			}
 		}
-		Iterator iteratorSecond = loginModules.iterator();
-		while (iteratorSecond.hasNext()) {
+
+		for (Iterator<?> iteratorSecond = loginModules.iterator(); iteratorSecond.hasNext();) {
 			LoginModule loginModule = (LoginModule) iteratorSecond.next();
 			try {
 				loginModule.commit();
@@ -374,7 +372,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 
 					// List emails = fetchResp.getAttributeValues("email");
 					// String email = (String) emails.get(0);
-					
+
 					List<?> aliases = fetchResp.getAttributeAliases();
 					for (Iterator<?> iter = aliases.iterator(); iter.hasNext();) {
 						String alias = (String) iter.next();
@@ -394,6 +392,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 		return null;
 	}
 
+	@Override
 	public void init(FilterConfig config) throws ServletException {
 		this.manager = (ConsumerManager) IWMainApplication.getDefaultIWApplicationContext().getApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER);
 		if (this.manager == null) {
@@ -413,7 +412,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				e.printStackTrace();
 			}
 			this.manager.setNonceVerifier(new InMemoryNonceVerifier(t));
-			
+
 			String ConnectionTimout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_CONNECTION_TIMEOUT, "10000");
 			int ct = 10000; //in milliseconds
 			try {
@@ -422,7 +421,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				e.printStackTrace();
 			}
 			this.manager.setConnectTimeout(ct);
-			
+
 			String SocketTimout = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_SOCKET_TIMEOUT, "10000");
 			int st = 10000; //in milliseconds
 			try {
@@ -431,7 +430,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				e.printStackTrace();
 			}
 			this.manager.setSocketTimeout(st);
-			
+
 			String maxRedirects = IWMainApplication.getDefaultIWApplicationContext().getApplicationSettings().getProperty(OpenIDConstants.PROPERTY_CONSUMER_MANAGER_MAX_REDIRECTS, "10");
 			int mrd = 10;
 			try {
@@ -443,14 +442,14 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 			YadisResolver resolver = new YadisResolver();
 			resolver.setMaxRedirects(mrd);
 			this.manager.getDiscovery().setYadisResolver(resolver);
-			
-			IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);	
+
+			IWMainApplication.getDefaultIWApplicationContext().setApplicationAttribute(OpenIDConstants.ATTRIBUTE_CONSUMER_MANAGER, this.manager);
 		}
 		catch (ConsumerException e) {
 			throw new ServletException(e);
 		}
 	}
-	
+
 	private UserBusiness getUserBusiness(IWApplicationContext iwac) {
 		try {
 			return (UserBusiness) IBOLookup.getServiceInstance(iwac, UserBusiness.class);
@@ -459,5 +458,5 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 			throw new IBORuntimeException(ile);
 		}
 	}
-	
+
 }
