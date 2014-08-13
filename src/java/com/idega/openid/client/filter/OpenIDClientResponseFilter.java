@@ -280,7 +280,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 	}
 
 	protected void processJAASLogin(HttpServletRequest request) {
-		List<?> loginModules = ImplementorRepository.getInstance().newInstances(LoginModule.class, this.getClass());
+		List<LoginModule> loginModules = ImplementorRepository.getInstance().newInstances(LoginModule.class, this.getClass());
 		// just a shortcut
 		if (loginModules.isEmpty()) {
 			return;
