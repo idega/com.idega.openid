@@ -87,7 +87,7 @@ public class OpenIDClientRequestFilter extends BaseFilter {
 			}
 			catch (OpenIDException e) {
 				LoginBusinessBean bean = new LoginBusinessBean();
-				bean.internalSetState(request, LoginState.Failed);
+				bean.internalSetState(request, LoginState.FAILED);
 			}
 		}
 

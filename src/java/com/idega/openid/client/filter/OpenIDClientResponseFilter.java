@@ -149,7 +149,7 @@ public class OpenIDClientResponseFilter extends BaseFilter {
 				}
 			}
 			if (loginFailed) {
-				bean.internalSetState(request, LoginState.Failed);
+				bean.internalSetState(request, LoginState.FAILED);
 			}
 		}
 

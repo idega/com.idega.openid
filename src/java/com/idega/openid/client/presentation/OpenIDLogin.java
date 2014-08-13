@@ -56,7 +56,7 @@ public class OpenIDLogin extends IWBaseComponent {
 		}
 		else {
 			LoginState state = LoginBusinessBean.internalGetState(iwc);
-			if (state.equals(LoginState.LoggedOut) || state.equals(LoginState.NoState)) {
+			if (state.equals(LoginState.LOGGED_OUT) || state.equals(LoginState.NO_STATE)) {
 				add(getLoggedOutPart(context));
 			}
 			else {
