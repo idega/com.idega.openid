@@ -104,37 +104,37 @@ public class OpenIDSignUpBean {
 	public static final String ERREOR_MESSAGE_ID_ACTIVATE_LOGIN_FAILED = "com.idega.openid.server.bean.OpenIDSignUpBean.ACTIVATE_LOGIN_FAILED";
 	public static final String ERROR_CODE_ACTIVATE_LOGIN_FAILED = "activate_login_failed";
 	
-	private static final String DEFAULT_SIGNUP_SUBJECT = "Nıskráning á eLykill.is";
+	private static final String DEFAULT_SIGNUP_SUBJECT = "NÃ½skrÃ¡ning Ã¡ eLykill.is";
 	private static final String LOCALIZED_SIGNUP_EMAIL_SUBJECT_KEY = "openid.signup.email.subject.format";
 	private static final String DEFAULT_SIGNUP_EMAIL_BODY = 
-		"Góğan dag {0}.\n\r<br/> " +
-		"Okkur er sönn ánægja ağ svara beiğni şinni um stofnun elykils.  " +
-		"Til şess ağ virkja eLykilinn şinn şarft şú ağ sına fram á ağ rétt kennitala hafi veriğ gefin upp " +
-		"og ağ hún eigi viğ şig. Ferliğ er í tveimur skrefum. " +
-		"Fyrst opnar şú rafrænt skjal sem şér hefur borist í heimabankann frá elykill.is.  Í şví skjali er stağfestingarkóği sem şú " +
-		"skráir inn á slóğinni <a href=\"http://www.elykill.is/pages/signup?confirm_id={1}\" >http://www.elykill.is/pages/signup?confirm_id={1}</a>." +
+		"GÃ³Ã°an dag {0}.\n\r<br/> " +
+		"Okkur er sÃ¶nn Ã¡nÃ¦gja aÃ° svara beiÃ°ni Ã¾inni um stofnun elykils.  " +
+		"Til Ã¾ess aÃ° virkja eLykilinn Ã¾inn Ã¾arft Ã¾Ãº aÃ° sÃ½na fram Ã¡ aÃ° rÃ©tt kennitala hafi veriÃ° gefin upp " +
+		"og aÃ° hÃºn eigi viÃ° Ã¾ig. FerliÃ° er Ã­ tveimur skrefum. " +
+		"Fyrst opnar Ã¾Ãº rafrÃ¦nt skjal sem Ã¾Ã©r hefur borist Ã­ heimabankann frÃ¡ elykill.is.  Ã Ã¾vÃ­ skjali er staÃ°festingarkÃ³Ã°i sem Ã¾Ãº " +
+		"skrÃ¡ir inn Ã¡ slÃ³Ã°inni <a href=\"http://www.elykill.is/pages/signup?confirm_id={1}\" >http://www.elykill.is/pages/signup?confirm_id={1}</a>." +
 		"\n\r<br/>" +
 		"\n\r<br/>" +
-		"Meğ bestu kveğju," +
+		"MeÃ° bestu kveÃ°ju," +
 		"\n\r<br/>" +
 		"eLykill.is";
 	private static final String LOCALIZED_SIGNUP_EMAIL_BODY_KEY = "openid.signup.email.body.format";
 	private static final String DEFAULT_SIGNUP_EMAIL_SENDER = "eLykill.is";
 	private static final String LOCALIZED_SIGNUP_EAMIL_SENDER_KEY = "openid.signup.email.sender.name";
 	
-	private static final String DEFAULT_SIGNUP_BANK_SUBJECT = "Nıskráning á eLykill.is";
+	private static final String DEFAULT_SIGNUP_BANK_SUBJECT = "NÃ½skrÃ¡ning Ã¡ eLykill.is";
 	private static final String LOCALIZED_SIGNUP_BANK_SUBJECT_KEY = "openid.signup.bank.subject.format";
 	private static final String DEFAULT_SIGNUP_BANK_BODY = 
-		"Góğan dag {0}.\n\r<br/> " +
-		"Okkur hefur borist beiğni um stofnun eLykils fyrir şig.  Til şess ağ stağfesta skráninguna şarft şú ağ " +
-		"skrá eftirfarandi kóğa inn á síğu eLykilsins.  Nánari upplısingar er ağ finna í tölvupósti sem borist hefur á " +
-		"netfangiğ {1}, sem gefiğ var upp viğ nıskráninguna." +
+		"GÃ³Ã°an dag {0}.\n\r<br/> " +
+		"Okkur hefur borist beiÃ°ni um stofnun eLykils fyrir Ã¾ig.  Til Ã¾ess aÃ° staÃ°festa skrÃ¡ninguna Ã¾arft Ã¾Ãº aÃ° " +
+		"skrÃ¡ eftirfarandi kÃ³Ã°a inn Ã¡ sÃ­Ã°u eLykilsins.  NÃ¡nari upplÃ½singar er aÃ° finna Ã­ tÃ¶lvupÃ³sti sem borist hefur Ã¡ " +
+		"netfangiÃ° {1}, sem gefiÃ° var upp viÃ° nÃ½skrÃ¡ninguna." +
 		"\n\r<br/>" +
 		"\n\r<br/>" +
-		"Kóğinn er: {2}" +
+		"KÃ³Ã°inn er: {2}" +
 		"\n\r<br/>" +
 		"\n\r<br/>" +
-		"Meğ bestu kveğju," +
+		"MeÃ° bestu kveÃ°ju," +
 		"\n\r<br/>" +
 		"eLykill.is";
 	private static final String LOCALIZED_SIGNUP_BANK_BODY_KEY = "openid.signup.bank.body.format";
